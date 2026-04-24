@@ -1,8 +1,8 @@
 import { getCategories, getTags, getUser } from './api.js';
+import { updateUserSection } from './components/navbar.js';
 
 let state = {
     currentUser: null,
-    token: localStorage.getItem('token'),
     categories: [],
     tags: [],
 };
@@ -14,29 +14,24 @@ export function getState() {
 }
 
 export function setState(newState) {
+    const oldUser = state.currentUser;
     state = { ...state, ...newState };
     console.log('State updated:', state);
-    listeners.forEach(listener => listener(state));
     
-    // Обновляем navbar без перезагрузки
-    const navbar = document.querySelector('nav');
-    if (navbar && window.router) {
-        import('./components/navbar.js').then(module => {
-            const newNavbar = module.default();
-            navbar.replaceWith(document.createRange().createContextualFragment(newNavbar).firstChild);
-            window.router.bindEvents();
-        });
+    // Если изменился пользователь, обновляем только секцию navbar
+    if (oldUser !== state.currentUser) {
+        updateUserSection();
     }
+    
+    listeners.forEach(listener => listener(state));
 }
 
-export function setAuth(token, user) {
-    localStorage.setItem('token', token);
-    setState({ token, currentUser: user });
+export function setAuth(user) {
+    setState({ currentUser: user });
 }
 
 export function clearAuth() {
-    localStorage.removeItem('token');
-    setState({ token: null, currentUser: null });
+    setState({ currentUser: null });
 }
 
 export function subscribe(listener) {
@@ -44,18 +39,13 @@ export function subscribe(listener) {
 }
 
 export async function initState() {
-    const token = localStorage.getItem('token');
-    state.token = token;
-    
-    if (token) {
-        try {
-            const user = await getUser();
-            state.currentUser = user;
-        } catch (error) {
-            localStorage.removeItem('token');
-            state.token = null;
-            state.currentUser = null;
-        }
+    try {
+        const user = await getUser();
+        state.currentUser = user;
+        console.log('User loaded:', user);
+    } catch (error) {
+        console.log('No authenticated user');
+        state.currentUser = null;
     }
     
     try {
@@ -66,7 +56,11 @@ export async function initState() {
         state.categories = categories;
         state.tags = tags;
     } catch (error) {
+        console.error('Error loading categories/tags:', error);
         state.categories = [];
         state.tags = [];
     }
+    
+    // Обновляем navbar после инициализации
+    updateUserSection();
 }

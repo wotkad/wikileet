@@ -3,18 +3,22 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 
 const app = express();
 
+// Обновляем CORS для работы с куками
 app.use(cors({
-    origin: '*',
+    origin: 'http://localhost:5000',
+    credentials: true, // Важно для кук
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
+app.use(cookieParser()); // Добавляем парсер кук
 
 const frontendPath = path.join(__dirname, '../frontend');
 
@@ -31,7 +35,8 @@ app.get('/api/info', (req, res) => {
             auth: {
                 register: 'POST /api/auth/register',
                 login: 'POST /api/auth/login',
-                me: 'GET /api/auth/me'
+                me: 'GET /api/auth/me',
+                logout: 'POST /api/auth/logout'
             },
             articles: {
                 list: 'GET /api/articles',

@@ -4,7 +4,7 @@ import WikiPage from './pages/wiki.js';
 import ArticlePage from './pages/article.js';
 import LoginPage from './pages/login.js';
 import RegisterPage from './pages/register.js';
-import Navbar from './components/navbar.js';
+import Navbar, { updateUserSection } from './components/navbar.js';
 
 const routes = {
     '/': HomePage,
@@ -72,17 +72,20 @@ const router = {
             return;
         }
 
-        const navbar = Navbar();
-        const content = await routeComponent(params);
+        // Рендерим navbar только один раз при загрузке страницы
+        if (!document.querySelector('nav')) {
+            const navbar = Navbar();
+            app.innerHTML = navbar + `<main class="container mx-auto px-4 py-8 max-w-7xl" id="main-content"></main>`;
+        }
         
-        app.innerHTML = `
-            ${navbar}
-            <main class="container mx-auto px-4 py-8 max-w-7xl">
-                ${content}
-            </main>
-        `;
+        // Рендерим только контент
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            const content = await routeComponent(params);
+            mainContent.innerHTML = content;
+        }
 
-        // Привязываем события после рендера
+        // Привязываем события
         this.bindEvents();
     },
 
@@ -102,6 +105,7 @@ const router = {
         try {
             const { login } = await import('./auth.js');
             await login(email, password);
+            updateUserSection(); // Обновляем navbar после логина
             this.navigate('/');
         } catch (error) {
             if (errorMsg) {
@@ -144,6 +148,7 @@ const router = {
         try {
             const { register } = await import('./auth.js');
             await register(name, email, password);
+            updateUserSection(); // Обновляем navbar после регистрации
             this.navigate('/');
         } catch (error) {
             if (errorMsg) {
@@ -154,13 +159,16 @@ const router = {
     },
 
     bindEvents() {
-        // Обработка logout
+        // Обработка logout через глобальный обработчик
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
+            // Убираем старый обработчик, если есть
+            logoutBtn.onclick = null;
             logoutBtn.onclick = async (e) => {
                 e.preventDefault();
                 const { logout } = await import('./auth.js');
-                logout();
+                await logout();
+                updateUserSection(); // Обновляем navbar после логаута
                 this.navigate('/login');
             };
         }

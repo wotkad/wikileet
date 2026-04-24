@@ -1,20 +1,16 @@
 const API_URL = '/api';
 
 async function request(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
     };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
     try {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
+            credentials: 'include', // Важно для отправки кук
         });
 
         if (!response.ok) {
@@ -35,7 +31,6 @@ export async function register(name, email, password) {
         method: 'POST',
         body: JSON.stringify({ name, email, password }),
     });
-    localStorage.setItem('token', data.token);
     return data;
 }
 
@@ -44,8 +39,13 @@ export async function login(email, password) {
         method: 'POST',
         body: JSON.stringify({ email, password }),
     });
-    localStorage.setItem('token', data.token);
     return data;
+}
+
+export async function logout() {
+    return request('/auth/logout', {
+        method: 'POST',
+    });
 }
 
 export async function getUser() {
@@ -95,8 +95,4 @@ export async function getCategories() {
 export async function getTags() {
     const data = await request('/tags');
     return Array.isArray(data) ? data : [];
-}
-
-export function logout() {
-    localStorage.removeItem('token');
 }
