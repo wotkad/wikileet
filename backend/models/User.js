@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        trim: true,
+    },
     email: {
         type: String,
         required: true,
@@ -25,16 +29,16 @@ const userSchema = new mongoose.Schema({
     },
 });
 
-// Хеширование пароля перед сохранением
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
 
-    this.password = await bcrypt.hash(this.password, 10);
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Метод сравнения паролей
-userSchema.methods.comparePassword = async function(password) {
-    return await bcrypt.compare(password, this.password);
+userSchema.methods.comparePassword = async function(candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

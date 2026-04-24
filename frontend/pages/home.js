@@ -1,12 +1,31 @@
 import { getState } from '../state.js';
-import { getArticles } from '../api.js';
+import { getArticles, getCategories, getTags } from '../api.js';
 import router from '../router.js';
 import ArticleCard from '../components/articleCard.js';
 
 export default async function HomePage() {
     const state = getState();
+    
+    // Загружаем данные, если их нет в state
+    let categories = state.categories;
+    let tags = state.tags;
+    
+    if (!categories || categories.length === 0) {
+        categories = await getCategories();
+    }
+    
+    if (!tags || tags.length === 0) {
+        tags = await getTags();
+    }
+    
     const recentArticles = await getArticles({ sort: '-createdAt', limit: 5 });
     const popularArticles = await getArticles({ sort: '-views', limit: 5 });
+    
+    // Проверяем, есть ли данные
+    console.log('Categories:', categories);
+    console.log('Tags:', tags);
+    console.log('Recent Articles:', recentArticles);
+    console.log('Popular Articles:', popularArticles);
 
     return `
         <div class="space-y-12">
@@ -28,24 +47,30 @@ export default async function HomePage() {
                 <div>
                     <h2 class="text-2xl font-bold mb-4">📚 Categories</h2>
                     <div class="space-y-2">
-                        ${state.categories.map(cat => `
-                            <div class="bg-gray-800 rounded-lg p-3 hover:bg-gray-750 transition cursor-pointer"
-                                 onclick="window.router.navigate('/wiki?category=${cat._id}')">
-                                <span class="font-semibold">${cat.name}</span>
-                            </div>
-                        `).join('')}
+                        ${categories && categories.length > 0 ? 
+                            categories.map(cat => `
+                                <div class="bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition cursor-pointer"
+                                     onclick="window.router.navigate('/wiki?category=${cat._id}')">
+                                    <span class="font-semibold">${cat.name}</span>
+                                </div>
+                            `).join('') : 
+                            '<div class="text-gray-400 text-center py-4">No categories yet</div>'
+                        }
                     </div>
                 </div>
 
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🏷️ Popular Tags</h2>
                     <div class="flex flex-wrap gap-2">
-                        ${state.tags.map(tag => `
-                            <span class="px-3 py-1 bg-gray-800 rounded-full text-sm hover:bg-gray-700 cursor-pointer transition"
-                                  onclick="window.router.navigate('/wiki?tags=${tag._id}')">
-                                ${tag.name}
-                            </span>
-                        `).join('')}
+                        ${tags && tags.length > 0 ? 
+                            tags.map(tag => `
+                                <span class="px-3 py-1 bg-gray-800 rounded-full text-sm hover:bg-gray-700 cursor-pointer transition"
+                                      onclick="window.router.navigate('/wiki?tags=${tag._id}')">
+                                    ${tag.name}
+                                </span>
+                            `).join('') : 
+                            '<div class="text-gray-400 text-center py-4">No tags yet</div>'
+                        }
                     </div>
                 </div>
             </div>
@@ -54,14 +79,20 @@ export default async function HomePage() {
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🆕 Recent Updates</h2>
                     <div class="space-y-4">
-                        ${recentArticles.map(article => ArticleCard(article)).join('')}
+                        ${recentArticles.articles && recentArticles.articles.length > 0 ? 
+                            recentArticles.articles.map(article => ArticleCard(article)).join('') : 
+                            '<div class="text-gray-400 text-center py-8">No articles yet</div>'
+                        }
                     </div>
                 </div>
 
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🔥 Popular Articles</h2>
                     <div class="space-y-4">
-                        ${popularArticles.map(article => ArticleCard(article)).join('')}
+                        ${popularArticles.articles && popularArticles.articles.length > 0 ? 
+                            popularArticles.articles.map(article => ArticleCard(article)).join('') : 
+                            '<div class="text-gray-400 text-center py-8">No articles yet</div>'
+                        }
                     </div>
                 </div>
             </div>

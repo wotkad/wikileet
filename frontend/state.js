@@ -1,3 +1,5 @@
+// frontend/state.js
+
 let state = {
     currentUser: null,
     token: localStorage.getItem('token'),
@@ -21,28 +23,33 @@ export function subscribe(fn) {
 }
 
 /**
- * AUTH STATE (ЕДИНСТВЕННЫЙ МЕХАНИЗМ)
+ * AUTH CONTROL
  */
 export function setAuth(token, user = null) {
-    state = {
-        ...state,
-        token,
-        currentUser: user,
-    };
-
     if (token) {
         localStorage.setItem('token', token);
     } else {
         localStorage.removeItem('token');
     }
 
-    listeners.forEach(fn => fn(state));
+    setState({
+        token,
+        currentUser: user
+    });
 }
 
 export function clearAuth() {
-    setAuth(null, null);
+    localStorage.removeItem('token');
+
+    setState({
+        token: null,
+        currentUser: null
+    });
 }
 
+/**
+ * INIT STATE
+ */
 export async function initState() {
     const token = localStorage.getItem('token');
 
@@ -51,10 +58,12 @@ export async function initState() {
             const { getUser } = await import('./api.js');
             const user = await getUser();
 
-            setAuth(token, user);
+            setState({
+                token,
+                currentUser: user
+            });
         } catch (err) {
-            console.warn('Auth expired');
-            setAuth(null, null);
+            clearAuth();
         }
     }
 
@@ -68,6 +77,6 @@ export async function initState() {
 
         setState({ categories, tags });
     } catch (err) {
-        console.error(err);
+        console.error('Failed to load initial data', err);
     }
 }

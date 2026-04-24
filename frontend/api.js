@@ -12,19 +12,20 @@ async function request(endpoint, options = {}) {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const res = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
     });
 
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'API request failed');
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'API error');
     }
 
-    return response.json();
+    return res.json();
 }
 
+/* AUTH */
 export const register = (email, password) =>
     request('/auth/register', {
         method: 'POST',
@@ -39,30 +40,33 @@ export const login = (email, password) =>
 
 export const getUser = () => request('/auth/me');
 
+/* ARTICLES */
 export const getArticles = (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    return request(`/articles${query ? `?${query}` : ''}`);
+    const q = new URLSearchParams(params).toString();
+    return request(`/articles${q ? `?${q}` : ''}`);
 };
 
 export const getArticle = (slug) =>
-    request(`/articles/article/${slug}`);
+    request(`/articles/by-slug/${slug}`);
 
-export const createArticle = (article) =>
+/* CRUD */
+export const createArticle = (data) =>
     request('/articles', {
         method: 'POST',
-        body: JSON.stringify(article),
+        body: JSON.stringify(data),
     });
 
-export const updateArticle = (id, article) =>
-    request(`/articles/${id}`, {
+export const updateArticle = (id, data) =>
+    request(`/articles/update/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(article),
+        body: JSON.stringify(data),
     });
 
 export const deleteArticle = (id) =>
-    request(`/articles/${id}`, {
+    request(`/articles/delete/${id}`, {
         method: 'DELETE',
     });
 
+/* META */
 export const getCategories = () => request('/categories');
 export const getTags = () => request('/tags');
