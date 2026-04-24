@@ -6,8 +6,6 @@ import LoginPage from './pages/login.js';
 import RegisterPage from './pages/register.js';
 import Navbar from './components/navbar.js';
 
-const state = getState();
-
 const routes = {
     '/': HomePage,
     '/wiki': WikiPage,
@@ -18,7 +16,33 @@ const routes = {
 
 const router = {
     init() {
+        // Обработка кликов по ссылкам
+        document.body.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.getAttribute('href') && !link.getAttribute('href').startsWith('http') && !link.getAttribute('target')) {
+                e.preventDefault();
+                const href = link.getAttribute('href');
+                if (href && href !== '#') {
+                    this.navigate(href);
+                }
+            }
+        });
+        
+        // Обработка навигации назад/вперед
         window.addEventListener('popstate', () => this.handleRoute());
+        
+        // Обработка отправки форм
+        document.body.addEventListener('submit', (e) => {
+            if (e.target.id === 'loginForm') {
+                e.preventDefault();
+                this.handleLogin(e.target);
+            } else if (e.target.id === 'registerForm') {
+                e.preventDefault();
+                this.handleRegister(e.target);
+            }
+        });
+        
+        // Запускаем роутинг
         this.handleRoute();
     },
 
@@ -44,8 +68,7 @@ const router = {
         }
 
         if (!routeComponent) {
-            // Перенаправляем на главную для неизвестных маршрутов
-            window.location.href = '/';
+            this.navigate('/');
             return;
         }
 
@@ -59,28 +82,98 @@ const router = {
             </main>
         `;
 
-        // Навесить обработчик logoutBtn после рендера
-        const btn = document.getElementById('logoutBtn');
-        if (btn) {
-            btn.onclick = () => {
-                import('./auth.js').then(({ logout }) => {
-                    logout();
-                    this.navigate('/login');
-                });
-            };
+        // Привязываем события после рендера
+        this.bindEvents();
+    },
+
+    async handleLogin(form) {
+        const email = form.querySelector('#email')?.value;
+        const password = form.querySelector('#password')?.value;
+        const errorMsg = form.querySelector('#errorMsg');
+        
+        if (!email || !password) {
+            if (errorMsg) {
+                errorMsg.textContent = 'Please fill in all fields';
+                errorMsg.classList.remove('hidden');
+            }
+            return;
         }
-        if (state.currentUser && (path === '/login' || path === '/register')) {
-            window.location.href = '/';
+        
+        try {
+            const { login } = await import('./auth.js');
+            await login(email, password);
+            this.navigate('/');
+        } catch (error) {
+            if (errorMsg) {
+                errorMsg.textContent = 'Invalid email or password';
+                errorMsg.classList.remove('hidden');
+            }
+        }
+    },
+
+    async handleRegister(form) {
+        const name = form.querySelector('#name')?.value;
+        const email = form.querySelector('#email')?.value;
+        const password = form.querySelector('#password')?.value;
+        const errorMsg = form.querySelector('#errorMsg');
+        
+        if (!name || !email || !password) {
+            if (errorMsg) {
+                errorMsg.textContent = 'Please fill in all fields';
+                errorMsg.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        if (name.length < 2) {
+            if (errorMsg) {
+                errorMsg.textContent = 'Name must be at least 2 characters';
+                errorMsg.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        if (password.length < 6) {
+            if (errorMsg) {
+                errorMsg.textContent = 'Password must be at least 6 characters';
+                errorMsg.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        try {
+            const { register } = await import('./auth.js');
+            await register(name, email, password);
+            this.navigate('/');
+        } catch (error) {
+            if (errorMsg) {
+                errorMsg.textContent = error.message || 'Registration failed';
+                errorMsg.classList.remove('hidden');
+            }
+        }
+    },
+
+    bindEvents() {
+        // Обработка logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.onclick = async (e) => {
+                e.preventDefault();
+                const { logout } = await import('./auth.js');
+                logout();
+                this.navigate('/login');
+            };
         }
     },
 
     navigate(path) {
-        window.history.pushState({}, '', path);
-        this.handleRoute();
+        if (window.location.pathname !== path) {
+            window.history.pushState({}, '', path);
+            this.handleRoute();
+        }
     }
 };
 
-// Делаем router глобальным для использования в onclick
 window.router = router;
 
 export default router;

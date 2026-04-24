@@ -4,7 +4,6 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// REGISTER
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -15,7 +14,7 @@ router.post('/register', async (req, res) => {
 
         const exists = await User.findOne({ email });
         if (exists) {
-            return res.status(400).json({ error: 'User already exists' });
+            return res.status(400).json({ error: 'Email already exists' });
         }
 
         const user = new User({ name, email, password });
@@ -42,7 +41,6 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// LOGIN
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -77,7 +75,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// ME
 router.get('/me', async (req, res) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');

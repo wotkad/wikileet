@@ -106,7 +106,6 @@ export default async function WikiPage() {
     `;
 }
 
-// Event listeners (will be attached after render)
 setTimeout(() => {
     const searchInput = document.getElementById('searchInput');
     const categorySelect = document.getElementById('categorySelect');

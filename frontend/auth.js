@@ -7,8 +7,8 @@ export async function login(email, password) {
     return data;
 }
 
-export async function register(email, password) {
-    const data = await apiRegister(email, password);
+export async function register(name, email, password) {
+    const data = await apiRegister(name, email, password);
     setAuth(data.token, data.user);
     return data;
 }

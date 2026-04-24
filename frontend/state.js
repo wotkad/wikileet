@@ -1,4 +1,4 @@
-// frontend/state.js
+import { getCategories, getTags, getUser } from './api.js';
 
 let state = {
     currentUser: null,
@@ -10,73 +10,63 @@ let state = {
 const listeners = [];
 
 export function getState() {
-    return state;
+    return { ...state };
 }
 
 export function setState(newState) {
     state = { ...state, ...newState };
-    listeners.forEach(fn => fn(state));
-}
-
-export function subscribe(fn) {
-    listeners.push(fn);
-}
-
-/**
- * AUTH CONTROL
- */
-export function setAuth(token, user = null) {
-    if (token) {
-        localStorage.setItem('token', token);
-    } else {
-        localStorage.removeItem('token');
+    console.log('State updated:', state);
+    listeners.forEach(listener => listener(state));
+    
+    // Обновляем navbar без перезагрузки
+    const navbar = document.querySelector('nav');
+    if (navbar && window.router) {
+        import('./components/navbar.js').then(module => {
+            const newNavbar = module.default();
+            navbar.replaceWith(document.createRange().createContextualFragment(newNavbar).firstChild);
+            window.router.bindEvents();
+        });
     }
+}
 
-    setState({
-        token,
-        currentUser: user
-    });
+export function setAuth(token, user) {
+    localStorage.setItem('token', token);
+    setState({ token, currentUser: user });
 }
 
 export function clearAuth() {
     localStorage.removeItem('token');
-
-    setState({
-        token: null,
-        currentUser: null
-    });
+    setState({ token: null, currentUser: null });
 }
 
-/**
- * INIT STATE
- */
+export function subscribe(listener) {
+    listeners.push(listener);
+}
+
 export async function initState() {
     const token = localStorage.getItem('token');
-
+    state.token = token;
+    
     if (token) {
         try {
-            const { getUser } = await import('./api.js');
             const user = await getUser();
-
-            setState({
-                token,
-                currentUser: user
-            });
-        } catch (err) {
-            clearAuth();
+            state.currentUser = user;
+        } catch (error) {
+            localStorage.removeItem('token');
+            state.token = null;
+            state.currentUser = null;
         }
     }
-
+    
     try {
-        const { getCategories, getTags } = await import('./api.js');
-
         const [categories, tags] = await Promise.all([
             getCategories(),
             getTags()
         ]);
-
-        setState({ categories, tags });
-    } catch (err) {
-        console.error('Failed to load initial data', err);
+        state.categories = categories;
+        state.tags = tags;
+    } catch (error) {
+        state.categories = [];
+        state.tags = [];
     }
 }

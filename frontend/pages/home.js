@@ -6,7 +6,6 @@ import ArticleCard from '../components/articleCard.js';
 export default async function HomePage() {
     const state = getState();
     
-    // Загружаем данные, если их нет в state
     let categories = state.categories;
     let tags = state.tags;
     
@@ -20,12 +19,6 @@ export default async function HomePage() {
     
     const recentArticles = await getArticles({ sort: '-createdAt', limit: 5 });
     const popularArticles = await getArticles({ sort: '-views', limit: 5 });
-    
-    // Проверяем, есть ли данные
-    console.log('Categories:', categories);
-    console.log('Tags:', tags);
-    console.log('Recent Articles:', recentArticles);
-    console.log('Popular Articles:', popularArticles);
 
     return `
         <div class="space-y-12">

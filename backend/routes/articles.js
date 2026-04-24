@@ -4,7 +4,6 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Получение списка статей
 router.get('/', async (req, res) => {
     console.log("GET /articles hit");
 
@@ -21,7 +20,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Получение одной статьи по slug
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -40,7 +38,6 @@ router.get('/:slug', async (req, res) => {
     }
 });
 
-// Создание статьи
 router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const article = new Article({
@@ -54,7 +51,6 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     }
 });
 
-// Обновление статьи
 router.put('/update/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const article = await Article.findByIdAndUpdate(
@@ -68,7 +64,6 @@ router.put('/update/:id', authMiddleware, adminMiddleware, async (req, res) => {
     }
 });
 
-// Удаление статьи
 router.delete('/delete/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         await Article.findByIdAndDelete(req.params.id);
