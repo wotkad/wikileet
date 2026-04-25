@@ -13,7 +13,7 @@ let currentFilters = {
 
 export default function ContentArea() {
     return `
-        <main class="flex-1 ml-0 lg:ml-64">
+        <main class="flex-1">
             <div class="main-content-area p-6" id="main-content">
                 <div class="loading-skeleton space-y-4">
                     <div class="skeleton h-8 w-64 rounded"></div>
