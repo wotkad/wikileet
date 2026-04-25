@@ -29,19 +29,19 @@ router.post('/register', async (req, res) => {
         
         await user.save();
         
-        // Создаем токен
         const token = jwt.sign(
             { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
         
-        // Устанавливаем HttpOnly cookie
+        // Настройки cookie
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // В разработке false, в production true
+            secure: false, // В разработке false
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+            path: '/', // Доступна для всего сайта
         });
         
         res.json({ 
@@ -77,19 +77,19 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
-        // Создаем токен
         const token = jwt.sign(
             { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
         
-        // Устанавливаем HttpOnly cookie
+        // Настройки cookie
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // В разработке false, в production true
+            secure: false, // В разработке false
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+            path: '/',
         });
         
         res.json({ 
@@ -111,7 +111,8 @@ router.post('/logout', (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
         secure: false,
-        sameSite: 'lax'
+        sameSite: 'lax',
+        path: '/',
     });
     res.json({ message: 'Logged out successfully' });
 });
@@ -121,20 +122,23 @@ router.get('/me', async (req, res) => {
     try {
         const token = req.cookies.token;
         
+        console.log('Cookie token:', token ? 'present' : 'not present');
+        
         if (!token) {
-            return res.status(401).json({ error: 'Not authenticated' });
+            return res.json(null);
         }
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId).select('-password');
         
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.json(null);
         }
         
         res.json(user);
     } catch (error) {
-        res.status(401).json({ error: 'Invalid token' });
+        console.error('Me endpoint error:', error);
+        res.json(null);
     }
 });
 

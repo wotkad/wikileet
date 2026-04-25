@@ -3,6 +3,8 @@ import { getState } from '../state.js';
 export default function Header() {
     const state = getState();
     
+    console.log('Header rendering, currentUser:', state.currentUser);
+    
     return `
         <header class="bg-gray-800 border-b border-gray-700 fixed top-0 left-0 right-0 z-50">
             <div class="h-16 px-6 flex items-center justify-between">
@@ -50,20 +52,24 @@ function renderUserSection(user) {
 }
 
 export function updateHeaderUser() {
+    console.log('updateHeaderUser called');
     const userSection = document.getElementById('header-user-section');
     if (userSection) {
         const state = getState();
+        console.log('Current user in updateHeaderUser:', state.currentUser);
         userSection.innerHTML = renderUserSection(state.currentUser);
         
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.onclick = async (e) => {
+            const newBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(newBtn, logoutBtn);
+            
+            newBtn.onclick = async (e) => {
                 e.preventDefault();
                 console.log('Logout clicked');
                 try {
                     const authModule = await import('../auth.js');
                     await authModule.logout();
-                    console.log('Logout successful');
                     updateHeaderUser();
                     const contentModule = await import('./ContentArea.js');
                     contentModule.loadContent('home');

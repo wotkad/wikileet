@@ -16,6 +16,9 @@ export function setState(newState) {
     state = { ...state, ...newState };
     console.log('State updated:', state);
     listeners.forEach(listener => listener(state));
+    
+    // Обновляем UI после изменения состояния
+    updateUI();
 }
 
 export function setAuth(user) {
@@ -32,25 +35,39 @@ export function subscribe(listener) {
     listeners.push(listener);
 }
 
+async function updateUI() {
+    try {
+        const { updateHeaderUser } = await import('./components/Header.js');
+        if (updateHeaderUser) updateHeaderUser();
+    } catch (e) {
+        // Игнорируем
+    }
+}
+
 export async function initState() {
     console.log('Initializing state...');
     
-    try {
-        const user = await getUser();
+    // Проверяем пользователя
+    const user = await getUser();
+    console.log('User from server:', user);
+    
+    // Исправляем условие: проверяем наличие user и хотя бы одного поля
+    if (user && user._id) {
         state.currentUser = user;
-        console.log('User loaded:', user);
-    } catch (error) {
-        console.log('No authenticated user:', error.message);
+        console.log('User IS logged in:', user.name);
+    } else {
         state.currentUser = null;
+        console.log('User is NOT logged in');
     }
     
+    // Загружаем категории и теги
     try {
         const [categories, tags] = await Promise.all([
             getCategories(),
             getTags()
         ]);
-        state.categories = categories;
-        state.tags = tags;
+        state.categories = categories || [];
+        state.tags = tags || [];
         console.log('Categories loaded:', categories.length);
         console.log('Tags loaded:', tags.length);
     } catch (error) {
@@ -58,4 +75,5 @@ export async function initState() {
         state.categories = [];
         state.tags = [];
     }
+    
 }

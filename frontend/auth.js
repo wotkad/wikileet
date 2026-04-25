@@ -31,8 +31,11 @@ export async function register(name, email, password) {
 
 export async function logout() {
     try {
+        console.log('Auth.logout called');
         await apiLogout();
+        console.log('API logout successful');
         clearAuth();
+        console.log('Auth cleared');
     } catch (error) {
         console.error('Logout error:', error);
         // Даже если ошибка, очищаем состояние

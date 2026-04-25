@@ -13,16 +13,26 @@ async function request(endpoint, options = {}) {
             credentials: 'include',
         });
 
+        // Для 204 No Content возвращаем null
+        if (response.status === 204) {
+            return null;
+        }
+
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
             throw new Error(error.error || 'API request failed');
         }
 
-        const data = await response.json();
-        return data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            return data;
+        }
+        
+        return null;
     } catch (error) {
         console.error(`API Error (${endpoint}):`, error);
-        throw error;
+        return null;
     }
 }
 
@@ -50,7 +60,20 @@ export async function logout() {
 }
 
 export async function getUser() {
-    return request('/auth/me');
+    const data = await request('/auth/me');
+    console.log('getUser raw response:', data);
+    
+    // Если вернулся null или пустой объект - пользователь не залогинен
+    if (!data) {
+        return null;
+    }
+    
+    // Если есть _id или id - пользователь залогинен
+    if (data._id || data.id) {
+        return data;
+    }
+    
+    return null;
 }
 
 export async function getArticles(params = {}) {
@@ -58,14 +81,15 @@ export async function getArticles(params = {}) {
     const url = `/articles${queryString ? `?${queryString}` : ''}`;
     const data = await request(url);
     
-    if (data.articles) {
+    if (data && data.articles) {
         return data;
     }
     return { articles: data || [], totalPages: 1, currentPage: 1, total: data?.length || 0 };
 }
 
 export async function getArticle(slug) {
-    return request(`/articles/${slug}`);
+    const data = await request(`/articles/${slug}`);
+    return data || { article: null, similar: [] };
 }
 
 export async function createArticle(article) {
