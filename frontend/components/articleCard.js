@@ -1,6 +1,6 @@
 export default function ArticleCard(article) {
     return `
-        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition cursor-pointer" data-article="${article.slug}">
+        <a href="/wiki/${article.slug}" class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
             <h3 class="text-lg font-semibold mb-2">${article.title}</h3>
             <p class="text-gray-400 text-sm mb-3">${article.description || 'No description'}</p>
             <div class="flex flex-wrap gap-2 text-xs">
@@ -11,6 +11,6 @@ export default function ArticleCard(article) {
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
             </div>
-        </div>
+        </a>
     `;
 }
