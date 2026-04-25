@@ -85,3 +85,26 @@ body {
         background-position: -200% 0;
     }
 }
+
+.bg-gray-750 {
+    background-color: #2d3748;
+}
+
+.transition {
+    transition: all 0.2s ease;
+}
+
+/* Sidebar transition for mobile */
+@media (max-width: 1023px) {
+    .sidebar {
+        position: fixed;
+        top: 64px;
+        left: 0;
+        bottom: 0;
+        z-index: 40;
+    }
+    
+    .sidebar.translate-x-0 {
+        transform: translateX(0);
+    }
+}

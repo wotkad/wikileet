@@ -1,0 +1,90 @@
+import { getState } from '../state.js';
+
+export default function Sidebar() {
+    const state = getState();
+    
+    return `
+        <aside class="sidebar w-64 bg-gray-800 border-r border-gray-700 fixed lg:relative lg:translate-x-0 transform -translate-x-full transition-transform duration-200 ease-in-out z-40 h-full overflow-y-auto" id="sidebar">
+            <div class="p-4 space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 text-blue-400">Navigation</h3>
+                    <div class="space-y-2">
+                        <button data-view="home" class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                            <span>🏠</span>
+                            <span>Home</span>
+                        </button>
+                        <button data-view="wiki" class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                            <span>📚</span>
+                            <span>All Articles</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 text-blue-400">Categories</h3>
+                    <div class="space-y-1" id="categories-list">
+                        ${renderCategories(state.categories)}
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 text-blue-400">Popular Tags</h3>
+                    <div class="flex flex-wrap gap-2" id="tags-list">
+                        ${renderTags(state.tags)}
+                    </div>
+                </div>
+            </div>
+        </aside>
+    `;
+}
+
+function renderCategories(categories) {
+    if (!categories || categories.length === 0) {
+        return '<div class="text-gray-400 text-sm">No categories yet</div>';
+    }
+    
+    return categories.map(cat => `
+        <button data-category="${cat._id}" class="category-btn w-full text-left px-3 py-2 rounded hover:bg-gray-700 transition text-sm">
+            ${cat.name}
+        </button>
+    `).join('');
+}
+
+function renderTags(tags) {
+    if (!tags || tags.length === 0) {
+        return '<div class="text-gray-400 text-sm">No tags yet</div>';
+    }
+    
+    return tags.map(tag => `
+        <button data-tag="${tag._id}" class="tag-btn px-2 py-1 bg-gray-700 rounded-full text-xs hover:bg-gray-600 transition">
+            ${tag.name}
+        </button>
+    `).join('');
+}
+
+export function updateSidebar() {
+    const categoriesList = document.getElementById('categories-list');
+    const tagsList = document.getElementById('tags-list');
+    const state = getState();
+    
+    if (categoriesList) {
+        categoriesList.innerHTML = renderCategories(state.categories);
+    }
+    if (tagsList) {
+        tagsList.innerHTML = renderTags(state.tags);
+    }
+}
+
+// Toggle sidebar for mobile
+if (typeof window !== 'undefined') {
+    setTimeout(() => {
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('translate-x-0');
+            });
+        }
+    }, 100);
+}

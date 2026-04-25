@@ -2,22 +2,40 @@ import { setAuth, clearAuth } from './state.js';
 import { login as apiLogin, register as apiRegister, logout as apiLogout } from './api.js';
 
 export async function login(email, password) {
-    const data = await apiLogin(email, password);
-    if (data.user) {
-        setAuth(data.user);
+    try {
+        const data = await apiLogin(email, password);
+        if (data && data.user) {
+            setAuth(data.user);
+            return data;
+        }
+        throw new Error('Login failed - no user data');
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
     }
-    return data;
 }
 
 export async function register(name, email, password) {
-    const data = await apiRegister(name, email, password);
-    if (data.user) {
-        setAuth(data.user);
+    try {
+        const data = await apiRegister(name, email, password);
+        if (data && data.user) {
+            setAuth(data.user);
+            return data;
+        }
+        throw new Error('Registration failed - no user data');
+    } catch (error) {
+        console.error('Registration error:', error);
+        throw error;
     }
-    return data;
 }
 
 export async function logout() {
-    await apiLogout();
-    clearAuth();
+    try {
+        await apiLogout();
+        clearAuth();
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Даже если ошибка, очищаем состояние
+        clearAuth();
+    }
 }

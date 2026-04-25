@@ -10,7 +10,7 @@ async function request(endpoint, options = {}) {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
-            credentials: 'include', // Важно для отправки кук
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -43,9 +43,10 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-    return request('/auth/logout', {
+    const data = await request('/auth/logout', {
         method: 'POST',
     });
+    return data;
 }
 
 export async function getUser() {
@@ -60,7 +61,7 @@ export async function getArticles(params = {}) {
     if (data.articles) {
         return data;
     }
-    return { articles: data, totalPages: 1, currentPage: 1, total: data.length };
+    return { articles: data || [], totalPages: 1, currentPage: 1, total: data?.length || 0 };
 }
 
 export async function getArticle(slug) {
