@@ -1,5 +1,6 @@
 import { getArticles, deleteArticle } from '../../api.js';
-import { showConfirmDialog, escapeHtml } from '../../components/Dialog.js';
+import { showConfirmDialog } from '../../components/Dialog.js';
+import { escapeHtml } from "../../utils/utils.js";
 import '../../components/Toast.js';
 
 let currentPage = 1;

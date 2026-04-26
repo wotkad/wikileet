@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/utils.js';
 import { getArticle } from '../api.js';
 
 export default async function ArticlePage(params) {
@@ -68,14 +69,4 @@ export default async function ArticlePage(params) {
             </div>
         `;
     }
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }

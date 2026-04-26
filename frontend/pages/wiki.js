@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/utils.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 
@@ -94,16 +95,6 @@ export default async function WikiPage() {
             ${data.totalPages > 1 ? renderPagination(data) : ''}
         </div>
     `;
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }
 
 function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap) {

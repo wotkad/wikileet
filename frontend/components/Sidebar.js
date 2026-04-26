@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/utils.js';
 import { getState } from '../state.js';
 
 export default function Sidebar() {
@@ -60,16 +61,6 @@ function renderTags(tags) {
             ${escapeHtml(tag.name)}
         </a>
     `).join('');
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }
 
 export function updateSidebar() {

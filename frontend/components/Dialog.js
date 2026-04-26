@@ -1,13 +1,4 @@
-// Компонент диалоговых окон
-export function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
+import { escapeHtml } from '../../utils/utils.js';
 
 export function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
     return new Promise((resolve) => {

@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../utils/utils.js';
+
 export default function ArticleCard(article) {
     return `
         <a href="/wiki/${article.slug}" class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
@@ -17,14 +19,4 @@ export default function ArticleCard(article) {
             </div>
         </a>
     `;
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g , function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }

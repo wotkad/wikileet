@@ -1,4 +1,5 @@
-// Toast notification system
+import { escapeHtml } from '../../utils/utils.js';
+
 class Toast {
     constructor() {
         this.container = null;
@@ -67,16 +68,6 @@ class Toast {
         });
         
         return toast;
-    }
-
-    escapeHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
     }
 
     remove(id) {

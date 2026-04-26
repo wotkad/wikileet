@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/utils.js';
 import { getState } from '../state.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
@@ -88,14 +89,4 @@ export default async function HomePage() {
             </div>
         </div>
     `;
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }
