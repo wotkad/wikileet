@@ -59,7 +59,7 @@ export default async function WikiPage() {
             <div class="mb-6">
                 <input type="text" 
                        id="searchInput" 
-                       placeholder="Search articles..." 
+                       placeholder="Search by title or description..." 
                        autocomplete="off"
                        class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                        value="${escapeHtml(currentFilters.search)}">
@@ -193,7 +193,7 @@ function performSearch(searchValue) {
         params.set('page', '1');
         window.router.navigate(`/wiki?${params.toString()}`);
         searchDebounceTimer = null;
-    }, 500);
+    }, 10);
 }
 
 // Функция для инициализации событий

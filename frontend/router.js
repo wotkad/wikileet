@@ -4,6 +4,8 @@ import WikiPage from './pages/wiki.js';
 import ArticlePage from './pages/article.js';
 import LoginPage, { initLoginForm } from './pages/login.js';
 import RegisterPage, { initRegisterForm } from './pages/register.js';
+import ArticlesListPage from './pages/admin/ArticlesList.js';
+import ArticleEditPage from './pages/admin/ArticleEdit.js';
 import Layout from './components/Layout.js';
 import { updateHeaderUser } from './components/Header.js';
 
@@ -13,6 +15,9 @@ const routes = {
     '/wiki/:slug': ArticlePage,
     '/login': LoginPage,
     '/register': RegisterPage,
+    '/admin/articles': ArticlesListPage,
+    '/admin/articles/new': ArticleEditPage,
+    '/admin/articles/:slug': ArticleEditPage,
 };
 
 const router = {
@@ -32,10 +37,7 @@ const router = {
             }
         });
         
-        // Обработка навигации назад/вперед
         window.addEventListener('popstate', () => this.handleRoute());
-        
-        // Запускаем роутинг
         this.handleRoute();
     },
 
@@ -43,9 +45,8 @@ const router = {
         const path = window.location.pathname;
         const app = document.getElementById('app');
         
-        let routeComponent = null;
-        let params = {};
         let Component = null;
+        let params = {};
 
         for (const [routePath, Comp] of Object.entries(routes)) {
             const routeRegex = new RegExp('^' + routePath.replace(/:\w+/g, '([^/]+)') + '$');
@@ -66,8 +67,17 @@ const router = {
             return;
         }
 
-        // Проверка авторизации для защищенных страниц
         const state = getState();
+        
+        // Проверка админ прав
+        if (path.startsWith('/admin')) {
+            if (!state.currentUser || state.currentUser.role !== 'admin') {
+                this.navigate('/login');
+                return;
+            }
+        }
+        
+        // Проверка авторизации для страниц логина/регистрации
         if ((path === '/login' || path === '/register') && state.currentUser) {
             this.navigate('/');
             return;
@@ -81,28 +91,36 @@ const router = {
         // Обновляем header
         updateHeaderUser();
         
-        // Инициализируем формы для login и register
+        // Инициализируем формы и админ функционал
         if (path === '/login') {
             setTimeout(() => initLoginForm(), 0);
         } else if (path === '/register') {
             setTimeout(() => initRegisterForm(), 0);
-        }
-        
-        // Для wiki страницы инициализируем события после рендера
-        if (path === '/wiki' || path.startsWith('/wiki?')) {
+        } else if (path === '/wiki' || path.startsWith('/wiki?')) {
             setTimeout(() => {
                 if (window.initWikiEvents) {
                     window.initWikiEvents();
                 }
             }, 0);
+        } else if (path === '/admin/articles') {
+            setTimeout(() => {
+                if (window.initArticlesList) {
+                    window.initArticlesList();
+                }
+            }, 0);
+        } else if (path.startsWith('/admin/articles/')) {
+            const slug = params.slug;
+            setTimeout(() => {
+                if (window.initArticleEdit) {
+                    window.initArticleEdit(slug);
+                }
+            }, 0);
         }
         
-        // Привязываем события
         this.bindEvents();
     },
 
     bindEvents() {
-        // Обработка logout
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             const newBtn = logoutBtn.cloneNode(true);

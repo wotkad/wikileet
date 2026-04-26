@@ -20,7 +20,7 @@ export default async function HomePage() {
     const popularArticles = await getArticles({ sort: '-views', limit: 6 });
 
     return `
-        <div class="mx-auto space-y-8">
+        <div class="max-w-6xl mx-auto space-y-8">
             <div class="text-center space-y-4">
                 <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                     Knowledge Base Platform
@@ -28,6 +28,11 @@ export default async function HomePage() {
                 <p class="text-gray-300 max-w-2xl mx-auto">
                     Your comprehensive knowledge base for organized information, easy access, and collaborative learning.
                 </p>
+                <div class="flex gap-4 justify-center">
+                    <a href="/wiki" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition inline-block">
+                        Browse Knowledge Base →
+                    </a>
+                </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-8">
@@ -36,8 +41,8 @@ export default async function HomePage() {
                     <div class="space-y-2">
                         ${categories && categories.length > 0 ? 
                             categories.map(cat => `
-                                <a href="/wiki?category=${cat._id}" class="block bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition">
-                                    <span class="font-semibold">${cat.name}</span>
+                                <a href="/wiki?category=${cat.slug}" class="block bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition">
+                                    <span class="font-semibold">${escapeHtml(cat.name)}</span>
                                 </a>
                             `).join('') : 
                             '<div class="text-gray-400 text-center py-4">No categories yet</div>'
@@ -50,8 +55,8 @@ export default async function HomePage() {
                     <div class="flex flex-wrap gap-2">
                         ${tags && tags.length > 0 ? 
                             tags.map(tag => `
-                                <a href="/wiki?tags=${tag._id}" class="px-3 py-1 bg-gray-800 rounded-full text-sm hover:bg-gray-700 transition">
-                                    ${tag.name}
+                                <a href="/wiki?tags=${tag.slug}" class="px-3 py-1 bg-gray-800 rounded-full text-sm hover:bg-gray-700 transition inline-block">
+                                    ${escapeHtml(tag.name)}
                                 </a>
                             `).join('') : 
                             '<div class="text-gray-400 text-center py-4">No tags yet</div>'
@@ -83,4 +88,14 @@ export default async function HomePage() {
             </div>
         </div>
     `;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }

@@ -41,6 +41,9 @@ function renderUserSection(user) {
             👤 ${user.name || user.email}
         </span>
         ${user.role === 'admin' ? `
+            <a href="/admin/articles" class="px-2 py-1 bg-green-900 text-green-300 rounded text-xs hover:bg-green-800 transition">
+                Admin Panel
+            </a>
             <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs">Admin</span>
         ` : ''}
         <button id="logoutBtn" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded transition text-sm">
@@ -62,14 +65,10 @@ export function updateHeaderUser() {
             
             newBtn.onclick = async (e) => {
                 e.preventDefault();
-                try {
-                    const authModule = await import('../auth.js');
-                    await authModule.logout();
-                    updateHeaderUser();
-                    window.router.navigate('/');
-                } catch (error) {
-                    console.error('Logout error:', error);
-                }
+                const { logout } = await import('../auth.js');
+                await logout();
+                updateHeaderUser();
+                window.router.navigate('/');
             };
         }
     }

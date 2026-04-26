@@ -7,11 +7,20 @@ async function request(endpoint, options = {}) {
     };
 
     try {
+        console.log(`Making request to: ${API_URL}${endpoint}`, { method: options.method || 'GET' });
+        
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
-            credentials: 'include',
+            credentials: 'include', // Это важно для отправки cookie с токеном
         });
+
+        console.log(`Response status for ${endpoint}:`, response.status);
+
+        if (response.status === 401) {
+            console.error('Unauthorized - token missing or invalid');
+            throw new Error('No token provided or token expired');
+        }
 
         if (response.status === 204) {
             return null;
@@ -31,7 +40,7 @@ async function request(endpoint, options = {}) {
         return null;
     } catch (error) {
         console.error(`API Error (${endpoint}):`, error);
-        return null;
+        throw error;
     }
 }
 
@@ -64,7 +73,6 @@ export async function getUser() {
 }
 
 export async function getArticles(params = {}) {
-    // Формируем query string из параметров (используем slugs)
     const queryParams = new URLSearchParams();
     
     if (params.search && params.search.trim()) {
@@ -107,23 +115,44 @@ export async function getArticle(slug) {
 }
 
 export async function createArticle(article) {
-    return request('/articles', {
+    const data = await request('/articles', {
         method: 'POST',
         body: JSON.stringify(article),
     });
+    return data;
 }
 
-export async function updateArticle(id, article) {
-    return request(`/articles/${id}`, {
+export async function updateArticle(slug, articleData) {
+    // Сначала получаем ID статьи по slug
+    const { article } = await getArticle(slug);
+    if (!article) {
+        throw new Error('Article not found');
+    }
+    
+    const data = await request(`/articles/${article._id}`, {
         method: 'PUT',
-        body: JSON.stringify(article),
+        body: JSON.stringify(articleData),
     });
+    return data;
 }
 
-export async function deleteArticle(id) {
-    return request(`/articles/${id}`, {
+export async function deleteArticle(slug) {
+    console.log('Deleting article with slug:', slug);
+    
+    // Сначала получаем ID статьи по slug
+    const { article } = await getArticle(slug);
+    if (!article) {
+        throw new Error('Article not found');
+    }
+    
+    console.log('Found article ID:', article._id);
+    
+    const data = await request(`/articles/${article._id}`, {
         method: 'DELETE',
     });
+    
+    console.log('Delete response:', data);
+    return data;
 }
 
 export async function getCategories() {

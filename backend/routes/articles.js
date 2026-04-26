@@ -25,11 +25,10 @@ router.get('/', async (req, res) => {
 
         const query = {};
 
-        // Поиск по названию или содержанию
+        // Поиск только по title и description (исключаем content)
         if (search && search.trim()) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
-                { content: { $regex: search, $options: 'i' } },
                 { description: { $regex: search, $options: 'i' } }
             ];
         }
@@ -42,14 +41,13 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Фильтр по тегам (по slugs) - ИСКЛЮЧАЮЩИЙ (должны быть ВСЕ выбранные теги)
+        // Фильтр по тегам (по slugs) - исключающий (должны быть ВСЕ выбранные теги)
         if (tagSlugs && tagSlugs.trim()) {
             const tagSlugsArray = tagSlugs.split(',').filter(s => s.trim());
             const tags = await Tag.find({ slug: { $in: tagSlugsArray } });
             const tagIds = tags.map(t => t._id);
             
             if (tagIds.length > 0) {
-                // Используем $all для исключающего поиска (должны быть ВСЕ теги)
                 query.tags = { $all: tagIds };
             }
         }
@@ -199,13 +197,21 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         
+        console.log('Deleting article with ID:', id);
+        
         const article = await Article.findByIdAndDelete(id);
         
         if (!article) {
+            console.log('Article not found with ID:', id);
             return res.status(404).json({ error: 'Article not found' });
         }
         
-        res.json({ message: 'Article deleted successfully' });
+        console.log('Article deleted successfully:', article.title);
+        
+        res.json({ 
+            message: 'Article deleted successfully',
+            deletedArticle: { id: article._id, title: article.title, slug: article.slug }
+        });
     } catch (error) {
         console.error('Error in DELETE /articles/:id:', error);
         res.status(500).json({ error: error.message });

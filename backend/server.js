@@ -20,6 +20,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Проверка что куки правильно парсятся (можно добавить для отладки)
+app.use((req, res, next) => {
+    console.log('Cookies:', req.cookies);
+    next();
+});
+
 const frontendPath = path.join(__dirname, '../frontend');
 
 // Раздача статических файлов (ДОЛЖНА быть ПЕРВОЙ)
