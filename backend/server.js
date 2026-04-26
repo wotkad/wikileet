@@ -100,6 +100,8 @@ app.use((err, req, res, next) => {
     });
 });
 
+app.set('trust proxy', true);
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

@@ -44,8 +44,8 @@ function renderCategories(categories) {
     }
     
     return categories.map(cat => `
-        <a href="/wiki?category=${cat._id}" class="category-link block px-3 py-2 rounded hover:bg-gray-700 transition text-sm">
-            ${cat.name}
+        <a href="/wiki?category=${cat.slug}" class="category-link block px-3 py-2 rounded hover:bg-gray-700 transition text-sm">
+            ${escapeHtml(cat.name)}
         </a>
     `).join('');
 }
@@ -56,8 +56,45 @@ function renderTags(tags) {
     }
     
     return tags.map(tag => `
-        <a href="/wiki?tags=${tag._id}" class="tag-link px-2 py-1 bg-gray-700 rounded-full text-xs hover:bg-gray-600 transition inline-block">
-            ${tag.name}
+        <a href="/wiki?tags=${tag.slug}" class="tag-link px-2 py-1 bg-gray-700 rounded-full text-xs hover:bg-gray-600 transition inline-block">
+            ${escapeHtml(tag.name)}
         </a>
     `).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+export function updateSidebar() {
+    const categoriesList = document.getElementById('categories-list');
+    const tagsList = document.getElementById('tags-list');
+    const state = getState();
+    
+    if (categoriesList) {
+        categoriesList.innerHTML = renderCategories(state.categories);
+    }
+    if (tagsList) {
+        tagsList.innerHTML = renderTags(state.tags);
+    }
+}
+
+// Toggle sidebar for mobile
+if (typeof window !== 'undefined') {
+    setTimeout(() => {
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('translate-x-0');
+            });
+        }
+    }, 100);
 }

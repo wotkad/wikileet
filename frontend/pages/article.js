@@ -14,21 +14,21 @@ export default async function ArticlePage(params) {
         }
         
         return `
-            <article class="mx-auto">
+            <article class="max-w-4xl mx-auto">
                 <a href="/wiki" class="inline-block mb-4 text-blue-400 hover:text-blue-300 transition">
                     ← Back to articles
                 </a>
                 
                 <div class="bg-gray-800 rounded-lg p-8">
-                    <h1 class="text-4xl font-bold mb-4">${article.title}</h1>
+                    <h1 class="text-4xl font-bold mb-4">${escapeHtml(article.title)}</h1>
                     
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <a href="/wiki?category=${article.category?._id}" class="px-2 py-1 bg-blue-900 text-blue-300 rounded text-sm hover:bg-blue-800 transition">
-                            ${article.category?.name || 'Uncategorized'}
+                        <a href="/wiki?category=${article.category?.slug}" class="px-2 py-1 bg-blue-900 text-blue-300 rounded text-sm hover:bg-blue-800 transition">
+                            ${escapeHtml(article.category?.name || 'Uncategorized')}
                         </a>
                         ${article.tags?.map(tag => `
-                            <a href="/wiki?tags=${tag._id}" class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm hover:bg-gray-600 transition">
-                                ${tag.name}
+                            <a href="/wiki?tags=${tag.slug}" class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm hover:bg-gray-600 transition">
+                                ${escapeHtml(tag.name)}
                             </a>
                         `).join('') || ''}
                     </div>
@@ -36,7 +36,7 @@ export default async function ArticlePage(params) {
                     <div class="text-sm text-gray-400 mb-6 space-y-1">
                         <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
                         <div>👁️ ${article.views} views</div>
-                        <div>✍️ By ${article.author?.name || article.author?.email || 'Unknown'}</div>
+                        <div>✍️ By ${escapeHtml(article.author?.name || article.author?.email || 'Unknown')}</div>
                     </div>
                     
                     <div class="prose max-w-none">
@@ -50,8 +50,8 @@ export default async function ArticlePage(params) {
                         <div class="space-y-3">
                             ${similar.map(art => `
                                 <a href="/wiki/${art.slug}" class="block hover:bg-gray-700 p-3 rounded transition">
-                                    <h4 class="font-semibold">${art.title}</h4>
-                                    <p class="text-sm text-gray-400">${art.category?.name || 'Uncategorized'}</p>
+                                    <h4 class="font-semibold">${escapeHtml(art.title)}</h4>
+                                    <p class="text-sm text-gray-400">${escapeHtml(art.category?.name || 'Uncategorized')}</p>
                                 </a>
                             `).join('')}
                         </div>
@@ -68,4 +68,14 @@ export default async function ArticlePage(params) {
             </div>
         `;
     }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }

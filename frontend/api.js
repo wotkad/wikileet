@@ -13,7 +13,6 @@ async function request(endpoint, options = {}) {
             credentials: 'include',
         });
 
-        // Для 204 No Content возвращаем null
         if (response.status === 204) {
             return null;
         }
@@ -61,24 +60,39 @@ export async function logout() {
 
 export async function getUser() {
     const data = await request('/auth/me');
-    console.log('getUser raw response:', data);
-    
-    // Если вернулся null или пустой объект - пользователь не залогинен
-    if (!data) {
-        return null;
-    }
-    
-    // Если есть _id или id - пользователь залогинен
-    if (data._id || data.id) {
-        return data;
-    }
-    
-    return null;
+    return data;
 }
 
 export async function getArticles(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
+    // Формируем query string из параметров (используем slugs)
+    const queryParams = new URLSearchParams();
+    
+    if (params.search && params.search.trim()) {
+        queryParams.append('search', params.search.trim());
+    }
+    if (params.categorySlug && params.categorySlug.trim()) {
+        queryParams.append('categorySlug', params.categorySlug);
+    }
+    if (params.tagSlugs && params.tagSlugs.length > 0) {
+        queryParams.append('tagSlugs', params.tagSlugs.join(','));
+    }
+    if (params.sort) {
+        queryParams.append('sort', params.sort);
+    }
+    if (params.page) {
+        queryParams.append('page', params.page);
+    }
+    if (params.limit) {
+        queryParams.append('limit', params.limit);
+    } else {
+        queryParams.append('limit', '10');
+    }
+    
+    const queryString = queryParams.toString();
     const url = `/articles${queryString ? `?${queryString}` : ''}`;
+    
+    console.log('Fetching articles with URL:', url);
+    
     const data = await request(url);
     
     if (data && data.articles) {

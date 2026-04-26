@@ -45,13 +45,14 @@ const router = {
         
         let routeComponent = null;
         let params = {};
+        let Component = null;
 
-        for (const [routePath, Component] of Object.entries(routes)) {
+        for (const [routePath, Comp] of Object.entries(routes)) {
             const routeRegex = new RegExp('^' + routePath.replace(/:\w+/g, '([^/]+)') + '$');
             const matches = path.match(routeRegex);
             
             if (matches) {
-                routeComponent = Component;
+                Component = Comp;
                 const paramNames = [...routePath.matchAll(/:(\w+)/g)].map(m => m[1]);
                 paramNames.forEach((name, index) => {
                     params[name] = matches[index + 1];
@@ -60,7 +61,7 @@ const router = {
             }
         }
 
-        if (!routeComponent) {
+        if (!Component) {
             this.navigate('/');
             return;
         }
@@ -73,11 +74,11 @@ const router = {
         }
 
         // Рендерим layout и контент
-        const content = await routeComponent(params);
+        const content = await Component(params);
         const layout = Layout(content);
         app.innerHTML = layout;
         
-        // Обновляем header (чтобы показать актуального пользователя)
+        // Обновляем header
         updateHeaderUser();
         
         // Инициализируем формы для login и register
@@ -85,6 +86,15 @@ const router = {
             setTimeout(() => initLoginForm(), 0);
         } else if (path === '/register') {
             setTimeout(() => initRegisterForm(), 0);
+        }
+        
+        // Для wiki страницы инициализируем события после рендера
+        if (path === '/wiki' || path.startsWith('/wiki?')) {
+            setTimeout(() => {
+                if (window.initWikiEvents) {
+                    window.initWikiEvents();
+                }
+            }, 0);
         }
         
         // Привязываем события
@@ -109,7 +119,7 @@ const router = {
     },
 
     navigate(path) {
-        if (window.location.pathname !== path) {
+        if (window.location.pathname + window.location.search !== path) {
             window.history.pushState({}, '', path);
             this.handleRoute();
         }
