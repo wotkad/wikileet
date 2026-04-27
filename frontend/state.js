@@ -47,20 +47,20 @@ async function updateUI() {
 export async function initState() {
     console.log('Initializing state...');
     
-    // Проверяем пользователя
-    const user = await getUser();
-    console.log('User from server:', user);
-    
-    // Исправляем условие: проверяем наличие user и хотя бы одного поля
-    if (user && user._id) {
-        state.currentUser = user;
-        console.log('User IS logged in:', user.name);
-    } else {
+    try {
+        const user = await getUser();
+        if (user && user._id) {
+            state.currentUser = user;
+            console.log('User loaded:', user);
+        } else {
+            state.currentUser = null;
+            console.log('No authenticated user');
+        }
+    } catch (error) {
+        console.log('Error loading user:', error);
         state.currentUser = null;
-        console.log('User is NOT logged in');
     }
     
-    // Загружаем категории и теги
     try {
         const [categories, tags] = await Promise.all([
             getCategories(),
@@ -75,5 +75,4 @@ export async function initState() {
         state.categories = [];
         state.tags = [];
     }
-    
 }

@@ -37,19 +37,39 @@ function renderUserSection(user) {
     }
     
     return `
-        <span class="text-sm text-gray-300">
-            👤 ${user.name || user.email}
-        </span>
-        ${user.role === 'admin' ? `
-            <a href="/admin/articles" class="px-2 py-1 bg-green-900 text-green-300 rounded text-xs hover:bg-green-800 transition">
-                Admin Panel
-            </a>
-            <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs">Admin</span>
-        ` : ''}
-        <button id="logoutBtn" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded transition text-sm">
-            Logout
-        </button>
+        <div class="relative group">
+            <button class="flex items-center gap-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">
+                <span>👤 ${escapeHtml(user.name || user.email)}</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden group-hover:block z-50">
+                <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                    👤 My Profile
+                </a>
+                ${user.role === 'admin' ? `
+                    <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                        ⚙️ Admin Panel
+                    </a>
+                ` : ''}
+                <hr class="border-gray-700">
+                <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm text-red-400">
+                    🚪 Logout
+                </button>
+            </div>
+        </div>
     `;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 export function updateHeaderUser() {

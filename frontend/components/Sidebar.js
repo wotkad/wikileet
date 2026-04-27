@@ -1,4 +1,3 @@
-import { escapeHtml } from '../../utils/utils.js';
 import { getState } from '../state.js';
 
 export default function Sidebar() {
@@ -63,6 +62,16 @@ function renderTags(tags) {
     `).join('');
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
 export function updateSidebar() {
     const categoriesList = document.getElementById('categories-list');
     const tagsList = document.getElementById('tags-list');
@@ -76,16 +85,26 @@ export function updateSidebar() {
     }
 }
 
-// Toggle sidebar for mobile
-if (typeof window !== 'undefined') {
-    setTimeout(() => {
-        const toggleBtn = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
+// Функция для инициализации sidebar событий
+export function initSidebarEvents() {
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (toggleBtn && sidebar) {
+        // Убираем старый обработчик
+        const newToggleBtn = toggleBtn.cloneNode(true);
+        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
         
-        if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('translate-x-0');
-            });
-        }
-    }, 100);
+        newToggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('translate-x-0');
+        });
+    }
+}
+
+// Инициализируем при загрузке
+if (typeof window !== 'undefined') {
+    // Ждем полной загрузки DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        initSidebarEvents();
+    });
 }

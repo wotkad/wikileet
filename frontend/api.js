@@ -186,3 +186,15 @@ export async function getTags() {
     const data = await request('/tags');
     return Array.isArray(data) ? data : [];
 }
+
+export async function getUserArticles(userId) {
+    if (!userId) {
+        console.error('getUserArticles called without userId');
+        return { articles: [], total: 0 };
+    }
+    
+    console.log('Fetching articles for user ID:', userId);
+    
+    const data = await request(`/articles?author=${userId}&limit=50`);
+    return data || { articles: [], total: 0 };
+}

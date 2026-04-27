@@ -4,10 +4,12 @@ import WikiPage from './pages/wiki.js';
 import ArticlePage from './pages/article.js';
 import LoginPage, { initLoginForm } from './pages/login.js';
 import RegisterPage, { initRegisterForm } from './pages/register.js';
+import ProfilePage from './pages/profile.js';
 import ArticlesListPage from './pages/admin/ArticlesList.js';
 import ArticleEditPage from './pages/admin/ArticleEdit.js';
 import Layout from './components/Layout.js';
 import { updateHeaderUser } from './components/Header.js';
+import { initSidebarEvents } from './components/Sidebar.js';
 
 const routes = {
     '/': HomePage,
@@ -15,6 +17,7 @@ const routes = {
     '/wiki/:slug': ArticlePage,
     '/login': LoginPage,
     '/register': RegisterPage,
+    '/profile': ProfilePage,
     '/admin/articles': ArticlesListPage,
     '/admin/articles/new': ArticleEditPage,
     '/admin/articles/:slug': ArticleEditPage,
@@ -22,7 +25,6 @@ const routes = {
 
 const router = {
     init() {
-        // Обработка кликов по ссылкам
         document.body.addEventListener('click', (e) => {
             const link = e.target.closest('a');
             if (link && link.getAttribute('href') && 
@@ -69,7 +71,11 @@ const router = {
 
         const state = getState();
         
-        // Проверка админ прав
+        if (path === '/profile' && !state.currentUser) {
+            this.navigate('/login');
+            return;
+        }
+        
         if (path.startsWith('/admin')) {
             if (!state.currentUser || state.currentUser.role !== 'admin') {
                 this.navigate('/login');
@@ -77,21 +83,22 @@ const router = {
             }
         }
         
-        // Проверка авторизации для страниц логина/регистрации
         if ((path === '/login' || path === '/register') && state.currentUser) {
             this.navigate('/');
             return;
         }
 
-        // Рендерим layout и контент
         const content = await Component(params);
         const layout = Layout(content);
         app.innerHTML = layout;
         
-        // Обновляем header
         updateHeaderUser();
         
-        // Инициализируем формы и админ функционал
+        // Инициализируем sidebar события после рендера
+        setTimeout(() => {
+            initSidebarEvents();
+        }, 100);
+        
         if (path === '/login') {
             setTimeout(() => initLoginForm(), 0);
         } else if (path === '/register') {
@@ -121,19 +128,7 @@ const router = {
     },
 
     bindEvents() {
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            const newBtn = logoutBtn.cloneNode(true);
-            logoutBtn.parentNode.replaceChild(newBtn, logoutBtn);
-            
-            newBtn.onclick = async (e) => {
-                e.preventDefault();
-                const { logout } = await import('./auth.js');
-                await logout();
-                updateHeaderUser();
-                this.navigate('/');
-            };
-        }
+        // Дополнительные события если нужны
     },
 
     navigate(path) {

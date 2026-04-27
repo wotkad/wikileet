@@ -22,6 +22,7 @@ router.get('/', async (req, res) => {
             page = 1,
             limit = 10,
             status,
+            author, // Добавляем фильтр по автору
         } = req.query;
 
         const query = {};
@@ -35,9 +36,8 @@ router.get('/', async (req, res) => {
                 const jwt = require('jsonwebtoken');
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 isAdmin = decoded.role === 'admin';
-                console.log('User is admin:', isAdmin);
             } catch (error) {
-                console.log('Invalid token');
+                // Токен невалидный
             }
         }
 
@@ -45,11 +45,14 @@ router.get('/', async (req, res) => {
         if (status && status !== 'all') {
             query.status = status;
         } else if (!status || status === 'all') {
-            // Если фильтр not specified или 'all', показываем все статьи только админам
             if (!isAdmin) {
                 query.status = 'published';
             }
-            // Админам показываем все статьи (без фильтра по статусу)
+        }
+
+        // Фильтр по автору
+        if (author) {
+            query.author = author;
         }
 
         // Поиск по title и description
@@ -88,7 +91,6 @@ router.get('/', async (req, res) => {
         }
 
         console.log('MongoDB query:', JSON.stringify(query, null, 2));
-        console.log('IsAdmin:', isAdmin, 'Status filter:', status);
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
