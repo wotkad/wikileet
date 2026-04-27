@@ -12,7 +12,7 @@ async function request(endpoint, options = {}) {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
-            credentials: 'include', // Это важно для отправки cookie с токеном
+            credentials: 'include',
         });
 
         console.log(`Response status for ${endpoint}:`, response.status);
@@ -95,6 +95,9 @@ export async function getArticles(params = {}) {
     } else {
         queryParams.append('limit', '10');
     }
+    if (params.status && params.status !== 'all') {
+        queryParams.append('status', params.status);
+    }
     
     const queryString = queryParams.toString();
     const url = `/articles${queryString ? `?${queryString}` : ''}`;
@@ -114,30 +117,20 @@ export async function getArticle(slug) {
     return data || { article: null, similar: [] };
 }
 
-export async function createArticle(article) {
+export async function createArticle(articleData) {
+    console.log('Creating article with data:', articleData);
+    
     const data = await request('/articles', {
         method: 'POST',
-        body: JSON.stringify(article),
+        body: JSON.stringify(articleData),
     });
+    
+    console.log('Create article response:', data);
     return data;
 }
 
 export async function updateArticle(slug, articleData) {
-    // Сначала получаем ID статьи по slug
-    const { article } = await getArticle(slug);
-    if (!article) {
-        throw new Error('Article not found');
-    }
-    
-    const data = await request(`/articles/${article._id}`, {
-        method: 'PUT',
-        body: JSON.stringify(articleData),
-    });
-    return data;
-}
-
-export async function deleteArticle(slug) {
-    console.log('Deleting article with slug:', slug);
+    console.log('Updating article with slug:', slug, 'data:', articleData);
     
     // Сначала получаем ID статьи по slug
     const { article } = await getArticle(slug);
@@ -148,11 +141,40 @@ export async function deleteArticle(slug) {
     console.log('Found article ID:', article._id);
     
     const data = await request(`/articles/${article._id}`, {
-        method: 'DELETE',
+        method: 'PUT',
+        body: JSON.stringify(articleData),
     });
     
-    console.log('Delete response:', data);
+    console.log('Update article response:', data);
     return data;
+}
+
+export async function deleteArticle(slug) {
+    console.log('Deleting article with slug:', slug);
+    
+    // Сначала получаем ID статьи по slug через админский эндпоинт
+    // Временно используем прямой запрос к админ API
+    const token = localStorage.getItem('token');
+    
+    try {
+        // Пробуем получить статью через API (админ может видеть черновики)
+        const { article } = await getArticle(slug);
+        if (!article) {
+            throw new Error('Article not found');
+        }
+        
+        console.log('Found article ID:', article._id);
+        
+        const data = await request(`/articles/${article._id}`, {
+            method: 'DELETE',
+        });
+        
+        console.log('Delete response:', data);
+        return data;
+    } catch (error) {
+        console.error('Error in deleteArticle:', error);
+        throw error;
+    }
 }
 
 export async function getCategories() {

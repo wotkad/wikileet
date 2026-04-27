@@ -27,6 +27,11 @@ const articleSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tag',
     }],
+    status: {
+        type: String,
+        enum: ['draft', 'published'],
+        default: 'draft',
+    },
     views: {
         type: Number,
         default: 0,
@@ -35,6 +40,10 @@ const articleSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
+    },
+    publishedAt: {
+        type: Date,
+        default: null,
     },
     createdAt: {
         type: Date,
@@ -46,11 +55,19 @@ const articleSchema = new mongoose.Schema({
     },
 });
 
-// Создаем индексы для поиска по title и description
+// Индексы для поиска
 articleSchema.index({ title: 'text', description: 'text' });
+articleSchema.index({ status: 1 });
+articleSchema.index({ publishedAt: -1 });
 
 articleSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
+    
+    // Если статус меняется на published и publishedAt не установлен
+    if (this.status === 'published' && !this.publishedAt) {
+        this.publishedAt = Date.now();
+    }
+    
     next();
 });
 

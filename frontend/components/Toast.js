@@ -1,4 +1,5 @@
-import { escapeHtml } from '../../utils/utils.js';
+// Toast notification system
+import { escapeHtml } from '../utils/utils.js';
 
 class Toast {
     constructor() {
@@ -53,7 +54,7 @@ class Toast {
         toast.className = `${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0`;
         toast.innerHTML = `
             <span class="text-xl font-bold">${icons[type]}</span>
-            <span class="flex-1">${this.escapeHtml(message)}</span>
+            <span class="flex-1">${escapeHtml(message)}</span>
             <button class="toast-close hover:text-gray-200 transition">×</button>
         `;
         
@@ -102,6 +103,9 @@ class Toast {
     }
 }
 
-window.toast = new Toast();
+// Создаем глобальный экземпляр
+if (typeof window !== 'undefined') {
+    window.toast = new Toast();
+}
 
 export default window.toast;

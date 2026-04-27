@@ -1,6 +1,6 @@
 import { getArticle, createArticle, updateArticle, getCategories, getTags } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml } from "../../utils/utils.js";
+import { escapeHtml } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let simplemde = null;
@@ -36,6 +36,8 @@ export default async function ArticleEditPage(params) {
         console.error('Error loading data:', error);
     }
     
+    const currentStatus = article?.status || 'draft';
+    
     return `
         <div class="max-w-6xl mx-auto">
             <div class="mb-6">
@@ -66,7 +68,7 @@ export default async function ArticleEditPage(params) {
                                value="${escapeHtml(article?.slug || '')}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <p class="text-xs text-gray-500 mt-1">Leave empty to auto-generate from title. Example: my-awesome-article (only lowercase letters, numbers, and hyphens)</p>
-                        ${isEdit ? '<p class="text-xs text-yellow-500 mt-1">⚠️ Editing slug will change the article URL</p>' : '<p class="text-xs text-green-500 mt-1">✓ Auto-generated from title if left empty</p>'}
+                        ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Auto-generated from title if left empty</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Editing slug will change the article URL</p>'}
                     </div>
                 </div>
                 
@@ -100,7 +102,7 @@ export default async function ArticleEditPage(params) {
                     
                     <div>
                         <label class="block text-sm font-medium mb-2">Tags (select multiple)</label>
-                        <div class="flex flex-wrap gap-2 p-3 bg-gray-800 rounded-lg" id="tags-container">
+                        <div class="flex flex-wrap gap-2 p-3 bg-gray-800 rounded-lg max-h-32 overflow-y-auto" id="tags-container">
                             ${tags.map(tag => `
                                 <label class="flex items-center space-x-2 px-3 py-1 bg-gray-700 rounded-full cursor-pointer hover:bg-gray-600 transition">
                                     <input type="checkbox" value="${tag._id}" 
@@ -113,16 +115,48 @@ export default async function ArticleEditPage(params) {
                     </div>
                 </div>
                 
-                <div class="flex gap-4">
-                    <button type="submit" 
-                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
-                        ${isEdit ? 'Update Article' : 'Create Article'}
-                    </button>
-                    <a href="/admin/articles" 
-                       class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
-                        Cancel
-                    </a>
-                </div>
+                <!-- Разные кнопки для создания и редактирования -->
+                ${isEdit ? `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Status</label>
+                            <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>
+                                    📝 Draft (not visible to users)
+                                </option>
+                                <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>
+                                    🚀 Published (visible to everyone)
+                                </option>
+                            </select>
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button type="submit" name="action" value="save" 
+                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                            💾 Save Changes
+                        </button>
+                        <a href="/admin/articles" 
+                           class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
+                            Cancel
+                        </a>
+                    </div>
+                ` : `
+                    <div class="flex gap-4">
+                        <button type="submit" name="action" value="draft" 
+                                class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">
+                            💾 Save as Draft
+                        </button>
+                        <button type="submit" name="action" value="published" 
+                                class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
+                            🚀 Publish
+                        </button>
+                        <a href="/admin/articles" 
+                           class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
+                            Cancel
+                        </a>
+                    </div>
+                `}
             </form>
         </div>
     `;
@@ -135,14 +169,14 @@ function generateSlug(title) {
     }
     
     return title
-        .toLowerCase()                           // Приводим к нижнему регистру
-        .replace(/[^\w\s-]/g, '')               // Удаляем все спецсимволы (точки, запятые и т.д.)
-        .replace(/\s+/g, '-')                    // Заменяем пробелы на тире
-        .replace(/--+/g, '-')                    // Заменяем несколько тире подряд на одно
-        .replace(/^-+|-+$/g, '');                // Удаляем тире в начале и конце
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/^-+|-+$/g, '');
 }
 
-function initMarkdownEditor() {
+function initMarkdownEditor(isNew = false) {
     const textarea = document.getElementById('content');
     if (!textarea) return;
     
@@ -152,6 +186,11 @@ function initMarkdownEditor() {
             window.simplemde = null;
             window.simplemdeInitialized = false;
         } catch(e) {}
+    }
+    
+    // Для новой статьи очищаем autosave
+    if (isNew) {
+        localStorage.removeItem('smde_article_content');
     }
     
     if (!document.querySelector('link[href*="simplemde"]')) {
@@ -165,17 +204,22 @@ function initMarkdownEditor() {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js';
         script.onload = () => {
-            createSimpleMDE(textarea);
+            createSimpleMDE(textarea, isNew);
         };
         document.head.appendChild(script);
     } else {
-        createSimpleMDE(textarea);
+        createSimpleMDE(textarea, isNew);
     }
 }
 
-function createSimpleMDE(textarea) {
+function createSimpleMDE(textarea, isNew = false) {
     setTimeout(() => {
         try {
+            // Если это новая статья и нет содержимого, очищаем autosave
+            if (isNew && (!textarea.value || textarea.value.trim() === '')) {
+                localStorage.removeItem('smde_article_content');
+            }
+            
             window.simplemde = new window.SimpleMDE({
                 element: textarea,
                 spellChecker: false,
@@ -194,6 +238,12 @@ function createSimpleMDE(textarea) {
                 placeholder: "Write your article content here using Markdown...",
                 status: ["lines", "words", "cursor"],
             });
+            
+            // Если это новая статья и редактор пустой, очищаем значение
+            if (isNew && window.simplemde.value() === '') {
+                window.simplemde.value('');
+            }
+            
             window.simplemdeInitialized = true;
             console.log('SimpleMDE initialized');
         } catch(e) {
@@ -204,19 +254,18 @@ function createSimpleMDE(textarea) {
 
 window.initArticleEdit = async function(slug) {
     const isEdit = slug && slug !== 'new';
+    const isNew = !isEdit;
     const oldSlug = isEdit ? slug : null;
     
     console.log('Initializing article edit, isEdit:', isEdit, 'slug:', slug);
     
     setTimeout(() => {
-        initMarkdownEditor();
+        initMarkdownEditor(isNew);
     }, 100);
     
-    // Валидация slug при ручном вводе (для всех статей)
     const slugInput = document.getElementById('slug');
     if (slugInput) {
         slugInput.addEventListener('input', function() {
-            // Валидация: только буквы, цифры и тире
             let value = this.value.toLowerCase();
             value = value.replace(/[^a-z0-9-]/g, '-');
             value = value.replace(/--+/g, '-');
@@ -225,11 +274,23 @@ window.initArticleEdit = async function(slug) {
         });
     }
     
-    // Обработка отправки формы
     const form = document.getElementById('articleForm');
     if (form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
+            
+            // Определяем статус на основе нажатой кнопки или выбранного статуса в дропдауне
+            const submitter = e.submitter;
+            let status;
+            
+            if (isEdit) {
+                // При редактировании берем статус из дропдауна
+                status = document.getElementById('status')?.value || 'draft';
+            } else {
+                // При создании берем из нажатой кнопки
+                const action = submitter?.value;
+                status = action === 'published' ? 'published' : 'draft';
+            }
             
             let content = document.getElementById('content').value;
             if (window.simplemde && window.simplemdeInitialized) {
@@ -244,18 +305,13 @@ window.initArticleEdit = async function(slug) {
             const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
             const tags = Array.from(tagCheckboxes).map(cb => cb.value);
             
-            // Если slug не указан, генерируем из title
             if (!formSlug) {
                 formSlug = generateSlug(title);
-                console.log('Auto-generated slug from title:', formSlug);
-                
                 if (!formSlug) {
-                    alert('Please enter a title or provide a slug');
+                    window.toast?.warning('Please enter a title or provide a slug');
                     return;
                 }
             }
-            
-            console.log('Form data:', { title, slug: formSlug, description, category, tags, contentLength: content?.length });
             
             if (!title || !formSlug || !description || !category || !content) {
                 window.toast?.warning('Please fill in all required fields');
@@ -267,34 +323,43 @@ window.initArticleEdit = async function(slug) {
                 return;
             }
             
-            // Предупреждение при изменении slug у существующей статьи
             if (isEdit && oldSlug && formSlug !== oldSlug) {
                 const confirmed = await showConfirmDialog(
                     'Change Slug?',
-                    `You are changing the slug from "${oldSlug}" to "${formSlug}".\n\nThis will break any existing links to this article. Are you sure?`
+                    `You are changing the slug from "${oldSlug}" to "${formSlug}".\n\nThis will break any existing links to this article. Are you sure?`,
+                    'Continue',
+                    'Cancel'
                 );
-                if (!confirmed) {
-                    return;
-                }
+                if (!confirmed) return;
             }
             
             try {
-                const articleData = { title, slug: formSlug, description, category, tags, content };
+                const articleData = { 
+                    title, 
+                    slug: formSlug, 
+                    description, 
+                    category, 
+                    tags, 
+                    content, 
+                    status 
+                };
+                
+                console.log('Sending article data:', articleData);
+                
                 let result;
                 
                 if (isEdit) {
-                    console.log('Updating article with old slug:', oldSlug, 'new slug:', formSlug);
                     result = await updateArticle(oldSlug, articleData);
                     console.log('Update result:', result);
                     window.toast?.success(`Article "${title}" updated successfully`);
                 } else {
-                    console.log('Creating new article');
                     result = await createArticle(articleData);
                     console.log('Create result:', result);
-                    window.toast?.success(`Article "${title}" created successfully`);
+                    const message = status === 'published' ? 'published' : 'saved as draft';
+                    window.toast?.success(`Article "${title}" ${message} successfully`);
                 }
                 
-                window.router.navigate(`/wiki/${formSlug}`);
+                window.router.navigate(`/admin/articles`);
             } catch (error) {
                 console.error('Error saving article:', error);
                 window.toast?.error('Error saving article: ' + error.message);

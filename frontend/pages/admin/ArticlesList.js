@@ -1,25 +1,44 @@
 import { getArticles, deleteArticle } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml } from "../../utils/utils.js";
+import { escapeHtml } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let currentPage = 1;
 let currentData = null;
+let currentStatusFilter = 'all'; // По умолчанию 'all'
 
 export default async function ArticlesListPage() {
-    currentData = await getArticles({ page: currentPage, limit: 20 });
+    const params = { page: currentPage, limit: 20 };
+    
+    // Отправляем status=all для получения всех статей (админ)
+    if (currentStatusFilter !== 'all') {
+        params.status = currentStatusFilter;
+    } else {
+        params.status = 'all';
+    }
+    
+    console.log('Fetching articles with params:', params);
+    
+    currentData = await getArticles(params);
     
     return `
         <div class="max-w-6xl mx-auto">
-            <div class="mb-6 flex justify-between items-center">
+            <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h1 class="text-3xl font-bold">Manage Articles</h1>
                     <p class="text-gray-400 mt-1" id="total-count">${currentData.total || 0} total articles</p>
                 </div>
-                <a href="/admin/articles/new" 
-                   class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
-                    + Create New Article
-                </a>
+                <div class="flex gap-3">
+                    <select id="status-filter" class="px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All articles</option>
+                        <option value="published" ${currentStatusFilter === 'published' ? 'selected' : ''}>Published</option>
+                        <option value="draft" ${currentStatusFilter === 'draft' ? 'selected' : ''}>Drafts</option>
+                    </select>
+                    <a href="/admin/articles/new" 
+                       class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
+                        + Create New Article
+                    </a>
+                </div>
             </div>
             
             <div class="grid grid-cols-1 gap-4" id="articles-list-container">
@@ -40,12 +59,16 @@ function renderArticlesList(articles) {
         <div class="bg-gray-800 rounded-lg p-4" data-article-id="${article._id}" data-article-title="${escapeHtml(article.title)}">
             <div class="flex justify-between items-start">
                 <div class="flex-1">
-                    <h3 class="text-lg font-semibold mb-2">${escapeHtml(article.title)}</h3>
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold">${escapeHtml(article.title)}</h3>
+                        ${renderStatusBadge(article.status)}
+                    </div>
                     <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
                     <div class="flex flex-wrap gap-2 text-xs">
                         <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
                         <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
                         <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
+                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${new Date(article.publishedAt).toLocaleDateString()}</span>` : ''}
                     </div>
                 </div>
                 <div class="flex gap-2 ml-4">
@@ -63,6 +86,14 @@ function renderArticlesList(articles) {
     `).join('');
 }
 
+function renderStatusBadge(status) {
+    if (status === 'published') {
+        return '<span class="px-2 py-0.5 bg-green-900 text-green-300 rounded-full text-xs font-medium">🚀 Published</span>';
+    } else {
+        return '<span class="px-2 py-0.5 bg-yellow-900 text-yellow-300 rounded-full text-xs font-medium">📝 Draft</span>';
+    }
+}
+
 function renderPagination(data) {
     return `
         <div class="flex justify-center gap-2 mt-8">
@@ -78,7 +109,17 @@ function renderPagination(data) {
 
 async function refreshArticlesList() {
     try {
-        currentData = await getArticles({ page: currentPage, limit: 20 });
+        const params = { page: currentPage, limit: 20 };
+        
+        if (currentStatusFilter !== 'all') {
+            params.status = currentStatusFilter;
+        } else {
+            params.status = 'all';
+        }
+        
+        console.log('Refreshing articles list with filter:', currentStatusFilter, 'params:', params);
+        
+        currentData = await getArticles(params);
         
         const container = document.getElementById('articles-list-container');
         const totalCountSpan = document.getElementById('total-count');
@@ -91,23 +132,29 @@ async function refreshArticlesList() {
             totalCountSpan.textContent = `${currentData.total || 0} total articles`;
         }
         
-        const paginationContainer = document.querySelector('.flex.justify-center.gap-2.mt-8');
-        if (paginationContainer && currentData.totalPages > 1) {
-            paginationContainer.innerHTML = renderPagination(currentData).replace('flex justify-center gap-2 mt-8', '');
-        } else if (paginationContainer && currentData.totalPages <= 1) {
-            paginationContainer.remove();
-        } else if (!paginationContainer && currentData.totalPages > 1) {
-            const container = document.querySelector('.max-w-6xl.mx-auto');
-            if (container) {
-                container.insertAdjacentHTML('beforeend', renderPagination(currentData));
-            }
-        }
+        updatePagination();
         
         attachDeleteEvents();
         attachPaginationEvents();
     } catch (error) {
         console.error('Error refreshing articles list:', error);
         window.toast?.error('Failed to refresh articles list');
+    }
+}
+
+function updatePagination() {
+    const existingPagination = document.querySelector('.flex.justify-center.gap-2.mt-8');
+    if (existingPagination && currentData.totalPages > 1) {
+        existingPagination.innerHTML = renderPagination(currentData).replace('flex justify-center gap-2 mt-8', '');
+        attachPaginationEvents();
+    } else if (existingPagination && currentData.totalPages <= 1) {
+        existingPagination.remove();
+    } else if (!existingPagination && currentData.totalPages > 1) {
+        const container = document.querySelector('.max-w-6xl.mx-auto');
+        if (container) {
+            container.insertAdjacentHTML('beforeend', renderPagination(currentData));
+            attachPaginationEvents();
+        }
     }
 }
 
@@ -120,8 +167,6 @@ async function attachDeleteEvents() {
             e.preventDefault();
             e.stopPropagation();
             
-            const articleId = newBtn.dataset.id;
-            const articleSlug = newBtn.dataset.slug;
             const articleTitle = newBtn.dataset.title;
             
             const confirmed = await showConfirmDialog(
@@ -133,31 +178,15 @@ async function attachDeleteEvents() {
             
             if (confirmed) {
                 try {
-                    const originalText = newBtn.textContent;
+                    const articleSlug = newBtn.dataset.slug;
                     newBtn.textContent = 'Deleting...';
                     newBtn.disabled = true;
                     newBtn.classList.add('opacity-50', 'cursor-not-allowed');
                     
                     await deleteArticle(articleSlug);
                     
-                    const articleElement = newBtn.closest('[data-article-id]');
-                    if (articleElement) {
-                        articleElement.remove();
-                        
-                        const totalCountSpan = document.getElementById('total-count');
-                        if (totalCountSpan) {
-                            const currentCount = parseInt(totalCountSpan.textContent) || 0;
-                            totalCountSpan.textContent = `${currentCount - 1} total articles`;
-                        }
-                        
-                        window.toast?.success(`Article "${articleTitle}" deleted successfully`);
-                        
-                        const remainingArticles = document.querySelectorAll('[data-article-id]');
-                        if (remainingArticles.length === 0 && currentPage > 1) {
-                            currentPage = 1;
-                            await refreshArticlesList();
-                        }
-                    }
+                    window.toast?.success(`Article "${articleTitle}" deleted successfully`);
+                    await refreshArticlesList();
                 } catch (error) {
                     console.error('Error deleting article:', error);
                     window.toast?.error('Failed to delete article: ' + error.message);
@@ -183,8 +212,28 @@ async function attachPaginationEvents() {
     });
 }
 
+async function attachFilterEvents() {
+    const filterSelect = document.getElementById('status-filter');
+    if (filterSelect) {
+        const currentValue = filterSelect.value;
+        const newFilter = filterSelect.cloneNode(true);
+        filterSelect.parentNode.replaceChild(newFilter, filterSelect);
+        
+        newFilter.value = currentValue;
+        
+        newFilter.addEventListener('change', async (e) => {
+            const newValue = e.target.value;
+            console.log('Filter changed to:', newValue);
+            currentStatusFilter = newValue;
+            currentPage = 1;
+            await refreshArticlesList();
+        });
+    }
+}
+
 window.initArticlesList = function() {
-    console.log('Initializing articles list');
+    console.log('Initializing articles list, current filter:', currentStatusFilter);
     attachDeleteEvents();
     attachPaginationEvents();
+    attachFilterEvents();
 };

@@ -20,9 +20,18 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Проверка что куки правильно парсятся (можно добавить для отладки)
-app.use((req, res, next) => {
-    console.log('Cookies:', req.cookies);
+app.use(async (req, res, next) => {
+    const token = req.cookies.token;
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            req.userRole = decoded.role;
+            req.userId = decoded.userId;
+            console.log('User role:', req.userRole, 'for path:', req.path);
+        } catch (error) {
+            console.log('Invalid token:', error.message);
+        }
+    }
     next();
 });
 

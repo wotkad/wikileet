@@ -21,11 +21,38 @@ router.get('/', async (req, res) => {
             sort = '-createdAt',
             page = 1,
             limit = 10,
+            status,
         } = req.query;
 
         const query = {};
 
-        // Поиск только по title и description (исключаем content)
+        // Определяем, админ ли пользователь
+        const token = req.cookies.token;
+        let isAdmin = false;
+        
+        if (token) {
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                isAdmin = decoded.role === 'admin';
+                console.log('User is admin:', isAdmin);
+            } catch (error) {
+                console.log('Invalid token');
+            }
+        }
+
+        // Фильтр по статусу
+        if (status && status !== 'all') {
+            query.status = status;
+        } else if (!status || status === 'all') {
+            // Если фильтр not specified или 'all', показываем все статьи только админам
+            if (!isAdmin) {
+                query.status = 'published';
+            }
+            // Админам показываем все статьи (без фильтра по статусу)
+        }
+
+        // Поиск по title и description
         if (search && search.trim()) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -33,7 +60,7 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Фильтр по категории (по slug)
+        // Фильтр по категории
         if (categorySlug && categorySlug.trim()) {
             const category = await Category.findOne({ slug: categorySlug });
             if (category) {
@@ -41,7 +68,7 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Фильтр по тегам (по slugs) - исключающий (должны быть ВСЕ выбранные теги)
+        // Фильтр по тегам
         if (tagSlugs && tagSlugs.trim()) {
             const tagSlugsArray = tagSlugs.split(',').filter(s => s.trim());
             const tags = await Tag.find({ slug: { $in: tagSlugsArray } });
@@ -61,6 +88,7 @@ router.get('/', async (req, res) => {
         }
 
         console.log('MongoDB query:', JSON.stringify(query, null, 2));
+        console.log('IsAdmin:', isAdmin, 'Status filter:', status);
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
@@ -86,7 +114,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/articles/:slug - получение одной статьи с умным счетчиком просмотров
+// GET /api/articles/:slug - получение одной статьи
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -94,6 +122,20 @@ router.get('/:slug', async (req, res) => {
         const clientIp = req.ip || req.connection.remoteAddress;
         const userAgent = req.headers['user-agent'];
         const sessionKey = `${clientIp}_${userAgent}_${slug}`;
+        
+        // Проверяем, админ ли пользователь
+        const token = req.cookies.token;
+        let isAdmin = false;
+        
+        if (token) {
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                isAdmin = decoded.role === 'admin';
+            } catch (error) {
+                // Токен невалидный, просто игнорируем
+            }
+        }
         
         const article = await Article.findOne({ slug })
             .populate('category')
@@ -104,22 +146,31 @@ router.get('/:slug', async (req, res) => {
             return res.status(404).json({ error: 'Article not found' });
         }
 
-        const lastViewTime = viewedArticles.get(sessionKey);
-        const now = Date.now();
-        
-        if (!lastViewTime || (now - lastViewTime) > 24 * 60 * 60 * 1000) {
-            article.views += 1;
-            await article.save();
-            viewedArticles.set(sessionKey, now);
+        // Проверяем, может ли пользователь видеть черновик
+        if (article.status === 'draft' && !isAdmin) {
+            return res.status(404).json({ error: 'Article not found' });
         }
 
-        // Похожие статьи (по тегам и категории)
+        // Увеличиваем просмотры только для опубликованных статей
+        if (article.status === 'published') {
+            const lastViewTime = viewedArticles.get(sessionKey);
+            const now = Date.now();
+            
+            if (!lastViewTime || (now - lastViewTime) > 24 * 60 * 60 * 1000) {
+                article.views += 1;
+                await article.save();
+                viewedArticles.set(sessionKey, now);
+            }
+        }
+
+        // Похожие статьи (только опубликованные)
         const similar = await Article.find({
             $or: [
                 { category: article.category._id },
                 { tags: { $in: article.tags } },
             ],
             _id: { $ne: article._id },
+            status: 'published',
         })
             .limit(5)
             .populate('category')
@@ -135,7 +186,9 @@ router.get('/:slug', async (req, res) => {
 // POST /api/articles - создание статьи (admin only)
 router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { title, slug, content, description, category, tags } = req.body;
+        const { title, slug, content, description, category, tags, status } = req.body;
+        
+        console.log('Creating article with data:', { title, slug, description, category, tags, status });
         
         if (!title || !slug || !content || !description || !category) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -153,12 +206,15 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             description,
             category,
             tags: tags || [],
+            status: status || 'draft',
             author: req.userId,
         });
         
         await article.save();
         await article.populate('category');
         await article.populate('tags');
+        
+        console.log('Article created successfully:', article._id);
         
         res.status(201).json(article);
     } catch (error) {
@@ -171,10 +227,35 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
+        const { status, title, slug, content, description, category, tags } = req.body;
+        
+        console.log('Updating article with ID:', id, 'Data:', { title, slug, status });
+        
+        const updateData = {
+            title,
+            slug,
+            content,
+            description,
+            category,
+            tags: tags || [],
+            updatedAt: Date.now()
+        };
+        
+        // Если статус меняется на published и publishedAt не установлен
+        if (status === 'published') {
+            const existingArticle = await Article.findById(id);
+            if (existingArticle && existingArticle.status !== 'published') {
+                updateData.publishedAt = Date.now();
+            }
+        }
+        
+        if (status) {
+            updateData.status = status;
+        }
         
         const article = await Article.findByIdAndUpdate(
             id,
-            { ...req.body, updatedAt: Date.now() },
+            updateData,
             { new: true, runValidators: true }
         );
         
@@ -184,6 +265,8 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         
         await article.populate('category');
         await article.populate('tags');
+        
+        console.log('Article updated successfully:', article._id);
         
         res.json(article);
     } catch (error) {
@@ -202,7 +285,6 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         const article = await Article.findByIdAndDelete(id);
         
         if (!article) {
-            console.log('Article not found with ID:', id);
             return res.status(404).json({ error: 'Article not found' });
         }
         
