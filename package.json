@@ -18,7 +18,10 @@
     "jsonwebtoken": "^9.0.2",
     "marked": "^18.0.2",
     "mongoose": "^7.5.0",
-    "simplemde": "^1.11.2"
+    "multer": "^2.1.1",
+    "sharp": "^0.34.5",
+    "simplemde": "^1.11.2",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

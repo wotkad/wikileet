@@ -14,8 +14,9 @@ export default async function ArticlePage(params) {
             `;
         }
         
-        // Рассчитываем время чтения
         const readTime = article.readTime || calculateReadTime(article.content);
+        const author = article.author || {};
+        const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : '/api/profile/avatar/default-avatar.png';
         
         return `
             <article class="max-w-4xl mx-auto">
@@ -37,11 +38,14 @@ export default async function ArticlePage(params) {
                         `).join('') || ''}
                     </div>
                     
-                    <div class="flex flex-wrap gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
+                    <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
                         <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
                         <div>⏱️ ${readTime} min read</div>
                         <div>👁️ ${article.views} views</div>
-                        <div>✍️ By ${escapeHtml(article.author?.name || article.author?.email || 'Unknown')}</div>
+                        <div class="flex items-center gap-2">
+                            <img src="${authorAvatar}" alt="${escapeHtml(author.name || 'Unknown')}" class="w-5 h-5 rounded-full object-cover">
+                            <span>✍️ By ${escapeHtml(author.name || author.email || 'Unknown')}</span>
+                        </div>
                     </div>
                     
                     <div class="prose max-w-none">
@@ -53,15 +57,23 @@ export default async function ArticlePage(params) {
                     <div class="mt-8 bg-gray-800 rounded-lg p-6">
                         <h3 class="text-xl font-bold mb-4">Similar Articles</h3>
                         <div class="space-y-3">
-                            ${similar.map(art => `
-                                <a href="/wiki/${art.slug}" class="block hover:bg-gray-700 p-3 rounded transition">
-                                    <h4 class="font-semibold">${escapeHtml(art.title)}</h4>
-                                    <div class="flex gap-3 text-xs text-gray-400 mt-1">
-                                        <span>⏱️ ${art.readTime || calculateReadTime(art.content)} min read</span>
-                                        <span>👁️ ${art.views || 0} views</span>
-                                    </div>
-                                </a>
-                            `).join('')}
+                            ${similar.map(art => {
+                                const artAuthor = art.author || {};
+                                const artAuthorAvatar = artAuthor.avatar ? `/api/profile/avatar/${artAuthor.avatar}` : '/api/profile/avatar/default-avatar.png';
+                                return `
+                                    <a href="/wiki/${art.slug}" class="block hover:bg-gray-700 p-3 rounded transition">
+                                        <h4 class="font-semibold">${escapeHtml(art.title)}</h4>
+                                        <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400 mt-1">
+                                            <span>⏱️ ${art.readTime || calculateReadTime(art.content)} min read</span>
+                                            <span>👁️ ${art.views || 0} views</span>
+                                            <div class="flex items-center gap-1">
+                                                <img src="${artAuthorAvatar}" alt="" class="w-4 h-4 rounded-full object-cover">
+                                                <span>${escapeHtml(artAuthor.name || artAuthor.email || 'Unknown')}</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 ` : ''}

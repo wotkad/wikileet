@@ -1,4 +1,5 @@
 import { getState } from '../state.js';
+import { escapeHtml } from '../utils/utils.js';
 
 export default function Header() {
     const state = getState();
@@ -36,10 +37,13 @@ function renderUserSection(user) {
         `;
     }
     
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}` : '/api/profile/avatar/default-avatar.png';
+    
     return `
         <div class="relative group">
             <button class="flex items-center gap-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">
-                <span>👤 ${escapeHtml(user.name || user.email)}</span>
+                <img src="${avatarUrl}" alt="${escapeHtml(user.name)}" class="w-6 h-6 rounded-full object-cover">
+                <span>${escapeHtml(user.name)}</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -62,17 +66,9 @@ function renderUserSection(user) {
     `;
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
+// Функция updateHeaderUser в Header.js
 export function updateHeaderUser() {
+    console.log('updateHeaderUser called');
     const userSection = document.getElementById('header-user-section');
     if (userSection) {
         const state = getState();

@@ -47,6 +47,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/articles', require('./routes/articles'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/tags', require('./routes/tags'));
+app.use('/api/profile', require('./routes/profile'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/info', (req, res) => {
     res.json({

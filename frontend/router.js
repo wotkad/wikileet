@@ -10,6 +10,7 @@ import ArticleEditPage from './pages/admin/ArticleEdit.js';
 import Layout from './components/Layout.js';
 import { updateHeaderUser } from './components/Header.js';
 import { initSidebarEvents } from './components/Sidebar.js';
+import { initAvatarUpload } from './components/AvatarUpload.js';
 
 const routes = {
     '/': HomePage,
@@ -93,42 +94,45 @@ const router = {
         app.innerHTML = layout;
         
         updateHeaderUser();
+        initSidebarEvents();
         
-        // Инициализируем sidebar события после рендера
-        setTimeout(() => {
-            initSidebarEvents();
-        }, 100);
-        
+        // Инициализация в зависимости от страницы
         if (path === '/login') {
-            setTimeout(() => initLoginForm(), 0);
+            setTimeout(() => initLoginForm(), 50);
         } else if (path === '/register') {
-            setTimeout(() => initRegisterForm(), 0);
+            setTimeout(() => initRegisterForm(), 50);
         } else if (path === '/wiki' || path.startsWith('/wiki?')) {
             setTimeout(() => {
                 if (window.initWikiEvents) {
                     window.initWikiEvents();
                 }
-            }, 0);
+            }, 50);
         } else if (path === '/admin/articles') {
             setTimeout(() => {
                 if (window.initArticlesList) {
                     window.initArticlesList();
                 }
-            }, 0);
+            }, 50);
         } else if (path.startsWith('/admin/articles/')) {
             const slug = params.slug;
             setTimeout(() => {
                 if (window.initArticleEdit) {
                     window.initArticleEdit(slug);
                 }
-            }, 0);
+            }, 50);
+        } else if (path === '/profile') {
+            // ВАЖНО: инициализируем аватары после загрузки страницы профиля
+            setTimeout(() => {
+                console.log('Initializing avatar upload on profile page');
+                initAvatarUpload();
+            }, 100);
         }
         
         this.bindEvents();
     },
 
     bindEvents() {
-        // Дополнительные события если нужны
+        // Дополнительные события
     },
 
     navigate(path) {

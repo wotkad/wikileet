@@ -1,56 +1,59 @@
 import { getState } from '../state.js';
 import { getUserArticles } from '../api.js';
 import { escapeHtml } from '../utils/utils.js';
-import ArticleCard from '../components/ArticleCard.js';
+import '../components/Toast.js';
 
 export default async function ProfilePage() {
     const state = getState();
     const user = state.currentUser;
-    
-    console.log('Profile page - user:', user);
     
     if (!user) {
         window.router.navigate('/login');
         return '<div class="text-center py-12">Redirecting to login...</div>';
     }
     
-    // Проверяем наличие id пользователя
     const userId = user._id || user.id;
-    if (!userId) {
-        console.error('User ID not found:', user);
-        return '<div class="text-center py-12 text-red-400">Error: User ID not found</div>';
-    }
     
-    console.log('Fetching articles for user ID:', userId);
-    
-    // Получаем статьи пользователя
     let articles = [];
     try {
         const articlesData = await getUserArticles(userId);
         articles = articlesData.articles || [];
-        console.log('Articles loaded:', articles.length);
     } catch (error) {
         console.error('Error loading articles:', error);
     }
     
-    // Форматируем дату регистрации
     const registeredDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('ru-RU', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
     }) : 'Unknown';
     
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
+    
     return `
         <div class="max-w-4xl mx-auto">
-            <!-- Profile Header -->
             <div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg p-8 mb-8">
                 <div class="flex items-center gap-6">
-                    <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-4xl">
-                        👤
+                    <div class="flex flex-col items-center space-y-4" id="avatar-upload-component">
+                        <div class="relative group">
+                            <img src="${avatarUrl}" 
+                                 alt="${escapeHtml(user.name)}"
+                                 class="w-32 h-32 rounded-full object-cover border-4 border-gray-700"
+                                 id="avatar-preview">
+                            <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition">
+                                <button type="button" id="upload-avatar-btn" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700 transition">
+                                    Change
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden">
+                        <button type="button" id="remove-avatar-btn" class="text-sm text-red-400 hover:text-red-300 transition ${!user?.avatar ? 'hidden' : ''}">
+                            Remove avatar
+                        </button>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-bold">${escapeHtml(user.name || 'User')}</h1>
-                        <p class="text-gray-300 mt-1">${escapeHtml(user.email || 'No email')}</p>
+                        <h1 class="text-3xl font-bold">${escapeHtml(user.name)}</h1>
+                        <p class="text-gray-300 mt-1">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
                                 ${user.role === 'admin' ? '👑 Administrator' : '📖 Member'}
@@ -63,7 +66,6 @@ export default async function ProfilePage() {
                 </div>
             </div>
             
-            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-blue-400">${articles.length}</div>
@@ -83,7 +85,6 @@ export default async function ProfilePage() {
                 </div>
             </div>
             
-            <!-- Recent Articles -->
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-2xl font-bold mb-4">📝 Recent Articles</h2>
                 ${articles.length > 0 ? `

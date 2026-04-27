@@ -1,4 +1,4 @@
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml } from '../utils/utils.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 
@@ -14,10 +14,8 @@ let searchDebounceTimer = null;
 let selectedTagSlugs = new Set();
 
 export default async function WikiPage() {
-    // Получаем параметры из URL
     const urlParams = new URLSearchParams(window.location.search);
     
-    // Обновляем фильтры из URL (используем slugs)
     const tagsFromUrl = urlParams.get('tags') ? urlParams.get('tags').split(',') : [];
     selectedTagSlugs = new Set(tagsFromUrl);
     
@@ -31,18 +29,15 @@ export default async function WikiPage() {
     
     console.log('WikiPage filters:', currentFilters);
     
-    // Загружаем данные
     const [data, categories, tags] = await Promise.all([
         getArticles(currentFilters),
         getCategories(),
         getTags()
     ]);
     
-    // Создаем карты для быстрого поиска по slug
     const categoryMap = new Map(categories.map(c => [c.slug, c]));
     const tagMap = new Map(tags.map(t => [t.slug, t]));
     
-    // Получаем названия выбранной категории
     let selectedCategoryName = '';
     if (currentFilters.categorySlug) {
         const selectedCat = categoryMap.get(currentFilters.categorySlug);
@@ -66,7 +61,6 @@ export default async function WikiPage() {
                        value="${escapeHtml(currentFilters.search)}">
             </div>
             
-            <!-- Множественный выбор тегов -->
             <div class="mb-6 bg-gray-800 rounded-lg p-4">
                 <h3 class="text-sm font-semibold mb-2 text-gray-300">Filter by tags:</h3>
                 <div class="flex flex-wrap gap-2" id="tags-filter">
@@ -184,14 +178,12 @@ function performSearch(searchValue) {
         params.set('page', '1');
         window.router.navigate(`/wiki?${params.toString()}`);
         searchDebounceTimer = null;
-    }, 10);
+    }, 500);
 }
 
-// Функция для инициализации событий
 window.initWikiEvents = function() {
     console.log('Initializing wiki events');
     
-    // Поиск
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         const currentValue = searchInput.value;
@@ -227,7 +219,6 @@ window.initWikiEvents = function() {
         newSearchInput.setSelectionRange(len, len);
     }
     
-    // Множественный выбор тегов
     const tagsContainer = document.getElementById('tags-filter');
     if (tagsContainer) {
         const tagButtons = tagsContainer.querySelectorAll('.tag-filter-btn');
@@ -248,7 +239,6 @@ window.initWikiEvents = function() {
         });
     }
     
-    // Очистка тегов
     const clearTagsBtn = document.getElementById('clearTagsBtn');
     if (clearTagsBtn) {
         const newClearTagsBtn = clearTagsBtn.cloneNode(true);
@@ -261,7 +251,6 @@ window.initWikiEvents = function() {
         });
     }
     
-    // Пагинация
     document.querySelectorAll('.page-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -273,7 +262,6 @@ window.initWikiEvents = function() {
         });
     });
     
-    // Очистка всех фильтров
     const clearBtn = document.getElementById('clearFiltersBtn');
     if (clearBtn) {
         const newClearBtn = clearBtn.cloneNode(true);

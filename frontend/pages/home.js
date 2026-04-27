@@ -17,6 +17,7 @@ export default async function HomePage() {
         tags = await getTags();
     }
     
+    // Загружаем статьи с полной информацией об авторе
     const recentArticles = await getArticles({ sort: '-createdAt', limit: 6 });
     const popularArticles = await getArticles({ sort: '-views', limit: 6 });
 

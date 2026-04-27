@@ -99,7 +99,7 @@ router.get('/', async (req, res) => {
         const articles = await Article.find(query)
             .populate('category')
             .populate('tags')
-            .populate('author', 'name email')
+            .populate('author', 'name email avatar')
             .sort(sort)
             .limit(parseInt(limit))
             .skip(skip);
@@ -139,35 +139,29 @@ router.get('/:slug', async (req, res) => {
         const userAgent = req.headers['user-agent'];
         const sessionKey = `${clientIp}_${userAgent}_${slug}`;
         
-        // Проверяем, админ ли пользователь
         const token = req.cookies.token;
         let isAdmin = false;
         
         if (token) {
             try {
-                const jwt = require('jsonwebtoken');
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 isAdmin = decoded.role === 'admin';
-            } catch (error) {
-                // Токен невалидный, просто игнорируем
-            }
+            } catch (error) {}
         }
         
         const article = await Article.findOne({ slug })
             .populate('category')
             .populate('tags')
-            .populate('author', 'name email');
+            .populate('author', 'name email avatar');
         
         if (!article) {
             return res.status(404).json({ error: 'Article not found' });
         }
 
-        // Проверяем, может ли пользователь видеть черновик
         if (article.status === 'draft' && !isAdmin) {
             return res.status(404).json({ error: 'Article not found' });
         }
 
-        // Увеличиваем просмотры только для опубликованных статей
         if (article.status === 'published') {
             const lastViewTime = viewedArticles.get(sessionKey);
             const now = Date.now();
@@ -179,7 +173,7 @@ router.get('/:slug', async (req, res) => {
             }
         }
 
-        // Похожие статьи (только опубликованные)
+        // Похожие статьи с полным populate автора
         const similar = await Article.find({
             $or: [
                 { category: article.category._id },
@@ -190,7 +184,8 @@ router.get('/:slug', async (req, res) => {
         })
             .limit(5)
             .populate('category')
-            .populate('tags');
+            .populate('tags')
+            .populate('author', 'name email avatar'); // Добавляем populate для автора
 
         res.json({ article, similar });
     } catch (error) {
