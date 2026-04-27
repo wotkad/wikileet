@@ -4,12 +4,13 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken'); // Добавляем импорт jwt
 
 dotenv.config();
 
 const app = express();
 
-// Обновляем CORS для работы с куками
+// CORS настройки
 app.use(cors({
     origin: 'http://localhost:5000',
     credentials: true,
@@ -20,6 +21,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Middleware для проверки токена и добавления userRole в req
 app.use(async (req, res, next) => {
     const token = req.cookies.token;
     if (token) {
@@ -37,11 +39,8 @@ app.use(async (req, res, next) => {
 
 const frontendPath = path.join(__dirname, '../frontend');
 
-// Раздача статических файлов (ДОЛЖНА быть ПЕРВОЙ)
-app.use(express.static(frontendPath, {
-    extensions: ['html', 'js', 'css', 'json'],
-    index: false // Отключаем автоматическую отдачу index.html
-}));
+// Раздача статических файлов frontend
+app.use(express.static(frontendPath));
 
 // API маршруты
 app.use('/api/auth', require('./routes/auth'));
@@ -80,21 +79,15 @@ mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ MongoDB connected successfully'))
     .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// SPA fallback - отдаем index.html только для путей, которые не являются статическими файлами и не API
+// SPA fallback
 app.use((req, res, next) => {
-    // Пропускаем API запросы
     if (req.path.startsWith('/api')) {
         return next();
     }
     
-    // Пропускаем запросы к статическим файлам с расширениями
+    // Пропускаем статические файлы с расширениями
     const staticExtensions = /\.(js|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/;
     if (staticExtensions.test(req.path)) {
-        return next();
-    }
-    
-    // Пропускаем запросы к папке assets
-    if (req.path.startsWith('/assets/')) {
         return next();
     }
     
@@ -114,8 +107,6 @@ app.use((err, req, res, next) => {
         error: err.message || 'Something went wrong!'
     });
 });
-
-app.set('trust proxy', true);
 
 const PORT = process.env.PORT || 5000;
 

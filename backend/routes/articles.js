@@ -1,4 +1,6 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken'); // Добавляем импорт jwt
 const Article = require('../models/Article');
 const Category = require('../models/Category');
 const Tag = require('../models/Tag');
@@ -22,7 +24,7 @@ router.get('/', async (req, res) => {
             page = 1,
             limit = 10,
             status,
-            author, // Добавляем фильтр по автору
+            author,
         } = req.query;
 
         const query = {};
@@ -33,11 +35,11 @@ router.get('/', async (req, res) => {
         
         if (token) {
             try {
-                const jwt = require('jsonwebtoken');
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 isAdmin = decoded.role === 'admin';
+                console.log('User is admin:', isAdmin);
             } catch (error) {
-                // Токен невалидный
+                console.log('Invalid token:', error.message);
             }
         }
 
