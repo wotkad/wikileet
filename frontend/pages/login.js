@@ -49,7 +49,7 @@ export function initLoginForm() {
     const form = document.getElementById('loginForm');
     if (!form) return;
     
-    // Убираем старый обработчик, если есть
+    // Убираем старый обработчик
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
     
@@ -69,18 +69,20 @@ export function initLoginForm() {
         }
         
         try {
+            console.log('Submitting login for:', email);
             const data = await login(email, password);
-            if (data && data.user) {
-                // Обновляем header
-                const { updateHeaderUser } = await import('../components/Header.js');
-                updateHeaderUser();
-                // Переходим на главную
-                window.router.navigate('/');
-            }
+            console.log('Login successful, user:', data?.user);
+            
+            // Обновляем header
+            const { updateHeaderUser } = await import('../components/Header.js');
+            updateHeaderUser();
+            
+            // Переходим на главную
+            window.router.navigate('/');
         } catch (error) {
             console.error('Login error:', error);
             if (errorMsg) {
-                errorMsg.textContent = error.message || 'Invalid credentials';
+                errorMsg.textContent = 'Invalid email or password';
                 errorMsg.classList.remove('hidden');
             }
         }
@@ -89,7 +91,6 @@ export function initLoginForm() {
 
 // Автоматически инициализируем форму после загрузки страницы
 if (typeof window !== 'undefined') {
-    // Ждем, пока DOM загрузится
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initLoginForm);
     } else {

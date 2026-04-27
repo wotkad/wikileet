@@ -9,6 +9,8 @@ router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
         
+        console.log('Registration attempt:', { name, email });
+        
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'Name, email and password are required' });
         }
@@ -35,13 +37,12 @@ router.post('/register', async (req, res) => {
             { expiresIn: '7d' }
         );
         
-        // Настройки cookie
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // В разработке false
+            secure: false,
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
-            path: '/', // Доступна для всего сайта
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/',
         });
         
         res.json({ 
@@ -49,7 +50,8 @@ router.post('/register', async (req, res) => {
                 id: user._id, 
                 name: user.name, 
                 email: user.email,
-                role: user.role 
+                role: user.role,
+                avatar: user.avatar
             } 
         });
     } catch (error) {
@@ -63,41 +65,55 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         
+        console.log('Login attempt:', { email });
+        
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
         
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
+            console.log('User not found:', email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
+        console.log('User found:', { id: user._id, email: user.email });
+        
+        // Проверяем пароль
         const isMatch = await user.comparePassword(password);
+        console.log('Password match result:', isMatch);
+        
         if (!isMatch) {
+            console.log('Password mismatch for user:', email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
+        // Создаем токен
         const token = jwt.sign(
             { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
         
-        // Настройки cookie
+        // Устанавливаем HttpOnly cookie
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // В разработке false
+            secure: false,
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+            maxAge: 7 * 24 * 60 * 60 * 1000,
             path: '/',
         });
         
+        console.log('Login successful, token set in cookie for user:', email);
+        
+        // Возвращаем пользователя
         res.json({ 
             user: { 
                 id: user._id, 
                 name: user.name, 
                 email: user.email,
-                role: user.role 
+                role: user.role,
+                avatar: user.avatar
             } 
         });
     } catch (error) {
@@ -121,8 +137,6 @@ router.post('/logout', (req, res) => {
 router.get('/me', async (req, res) => {
     try {
         const token = req.cookies.token;
-        
-        console.log('Cookie token:', token ? 'present' : 'not present');
         
         if (!token) {
             return res.json(null);

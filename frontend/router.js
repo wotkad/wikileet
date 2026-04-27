@@ -24,6 +24,124 @@ const routes = {
     '/admin/articles/:slug': ArticleEditPage,
 };
 
+// Функции для инициализации профиля
+let profileInitialized = false;
+
+async function initProfileForms() {
+    console.log('initProfileForms called');
+    
+    // Инициализация формы редактирования профиля
+    const editForm = document.getElementById('editProfileForm');
+    if (editForm && !editForm.hasAttribute('data-initialized')) {
+        console.log('Initializing edit profile form');
+        editForm.setAttribute('data-initialized', 'true');
+        
+        const newEditForm = editForm.cloneNode(true);
+        editForm.parentNode.replaceChild(newEditForm, editForm);
+        
+        newEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('edit-name')?.value;
+            const email = document.getElementById('edit-email')?.value;
+            
+            if (!name || !email) {
+                window.toast?.warning('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email }),
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Update failed');
+                }
+                
+                const user = await response.json();
+                
+                const { setState } = await import('./state.js');
+                setState({ currentUser: user });
+                
+                const nameDisplay = document.getElementById('user-name-display');
+                const emailDisplay = document.getElementById('user-email-display');
+                if (nameDisplay) nameDisplay.textContent = user.name;
+                if (emailDisplay) emailDisplay.textContent = user.email;
+                
+                updateHeaderUser();
+                window.toast?.success('Profile updated successfully!');
+            } catch (error) {
+                console.error('Update profile error:', error);
+                window.toast?.error(error.message);
+            }
+        });
+    }
+    
+    // Инициализация формы смены пароля
+    const passwordForm = document.getElementById('changePasswordForm');
+    if (passwordForm && !passwordForm.hasAttribute('data-initialized')) {
+        console.log('Initializing change password form');
+        passwordForm.setAttribute('data-initialized', 'true');
+        
+        const newPasswordForm = passwordForm.cloneNode(true);
+        passwordForm.parentNode.replaceChild(newPasswordForm, passwordForm);
+        
+        newPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('current-password')?.value;
+            const newPassword = document.getElementById('new-password')?.value;
+            const confirmPassword = document.getElementById('confirm-password')?.value;
+            
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                window.toast?.warning('Please fill in all fields');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                window.toast?.warning('New passwords do not match');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                window.toast?.warning('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile/change-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Password change failed');
+                }
+                
+                const data = await response.json();
+                
+                if (data.user) {
+                    const { setState } = await import('./state.js');
+                    setState({ currentUser: data.user });
+                    updateHeaderUser();
+                }
+                
+                window.toast?.success('Password changed successfully!');
+                newPasswordForm.reset();
+            } catch (error) {
+                console.error('Change password error:', error);
+                window.toast?.error(error.message);
+            }
+        });
+    }
+}
+
 const router = {
     init() {
         document.body.addEventListener('click', (e) => {
@@ -121,11 +239,13 @@ const router = {
                 }
             }, 50);
         } else if (path === '/profile') {
-            // ВАЖНО: инициализируем аватары после загрузки страницы профиля
+            // Инициализируем все компоненты профиля
             setTimeout(() => {
-                console.log('Initializing avatar upload on profile page');
+                console.log('Initializing profile components');
                 initAvatarUpload();
-            }, 100);
+                initProfileForms();
+                profileInitialized = true;
+            }, 150);
         }
         
         this.bindEvents();

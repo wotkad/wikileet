@@ -1,7 +1,6 @@
 import { getState } from '../state.js';
 import { getUserArticles } from '../api.js';
 import { escapeHtml } from '../utils/utils.js';
-import '../components/Toast.js';
 
 export default async function ProfilePage() {
     const state = getState();
@@ -52,8 +51,8 @@ export default async function ProfilePage() {
                         </button>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-bold">${escapeHtml(user.name)}</h1>
-                        <p class="text-gray-300 mt-1">${escapeHtml(user.email)}</p>
+                        <h1 class="text-3xl font-bold" id="user-name-display">${escapeHtml(user.name)}</h1>
+                        <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
                                 ${user.role === 'admin' ? '👑 Administrator' : '📖 Member'}
@@ -66,6 +65,52 @@ export default async function ProfilePage() {
                 </div>
             </div>
             
+            <!-- Edit Profile Form -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4">✏️ Edit Profile</h2>
+                <form id="editProfileForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Name</label>
+                        <input type="text" id="edit-name" value="${escapeHtml(user.name)}" required
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email</label>
+                        <input type="email" id="edit-email" value="${escapeHtml(user.email)}" required
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        Update Profile
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Change Password Form -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4">🔒 Change Password</h2>
+                <form id="changePasswordForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Current Password</label>
+                        <input type="password" id="current-password" required
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">New Password</label>
+                        <input type="password" id="new-password" required minlength="6"
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Confirm New Password</label>
+                        <input type="password" id="confirm-password" required minlength="6"
+                               class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                        Change Password
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-blue-400">${articles.length}</div>
@@ -85,6 +130,7 @@ export default async function ProfilePage() {
                 </div>
             </div>
             
+            <!-- Recent Articles -->
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-2xl font-bold mb-4">📝 Recent Articles</h2>
                 ${articles.length > 0 ? `
