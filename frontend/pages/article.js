@@ -44,7 +44,7 @@ export default async function ArticlePage(params) {
                         <div>👁️ ${article.views} views</div>
                         <div class="flex items-center gap-2">
                             <img src="${authorAvatar}" alt="${escapeHtml(author.name || 'Unknown')}" class="w-5 h-5 rounded-full object-cover">
-                            <span>✍️ By ${escapeHtml(author.name || author.email || 'Unknown')}</span>
+                            <span>${escapeHtml(author.name || author.email || 'Unknown')}</span>
                         </div>
                     </div>
                     
