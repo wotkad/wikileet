@@ -1,6 +1,8 @@
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml, calculateReadTime } from '../utils/utils.js';
 
 export default function ArticleCard(article) {
+    const readTime = article.readTime || calculateReadTime(article.content);
+    
     return `
         <a href="/wiki/${article.slug}" class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
             <h3 class="text-lg font-semibold mb-2">${escapeHtml(article.title)}</h3>
@@ -15,6 +17,7 @@ export default function ArticleCard(article) {
                     </span>
                 `).join('') || ''}
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
+                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTime} min read</span>
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
             </div>
         </a>

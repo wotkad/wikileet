@@ -1,4 +1,4 @@
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml, calculateReadTime } from '../utils/utils.js';
 import { getArticle } from '../api.js';
 
 export default async function ArticlePage(params) {
@@ -13,6 +13,9 @@ export default async function ArticlePage(params) {
                 </div>
             `;
         }
+        
+        // Рассчитываем время чтения
+        const readTime = article.readTime || calculateReadTime(article.content);
         
         return `
             <article class="max-w-4xl mx-auto">
@@ -34,8 +37,9 @@ export default async function ArticlePage(params) {
                         `).join('') || ''}
                     </div>
                     
-                    <div class="text-sm text-gray-400 mb-6 space-y-1">
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
                         <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
+                        <div>⏱️ ${readTime} min read</div>
                         <div>👁️ ${article.views} views</div>
                         <div>✍️ By ${escapeHtml(article.author?.name || article.author?.email || 'Unknown')}</div>
                     </div>
@@ -52,7 +56,10 @@ export default async function ArticlePage(params) {
                             ${similar.map(art => `
                                 <a href="/wiki/${art.slug}" class="block hover:bg-gray-700 p-3 rounded transition">
                                     <h4 class="font-semibold">${escapeHtml(art.title)}</h4>
-                                    <p class="text-sm text-gray-400">${escapeHtml(art.category?.name || 'Uncategorized')}</p>
+                                    <div class="flex gap-3 text-xs text-gray-400 mt-1">
+                                        <span>⏱️ ${art.readTime || calculateReadTime(art.content)} min read</span>
+                                        <span>👁️ ${art.views || 0} views</span>
+                                    </div>
                                 </a>
                             `).join('')}
                         </div>

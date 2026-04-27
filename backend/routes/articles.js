@@ -233,6 +233,12 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         
         console.log('Updating article with ID:', id, 'Data:', { title, slug, status });
         
+        // Рассчитываем время чтения
+        const wordsPerMinute = 200;
+        const text = content.replace(/<[^>]*>/g, '');
+        const words = text.trim().split(/\s+/).length;
+        const readTime = Math.max(1, Math.ceil(words / wordsPerMinute));
+        
         const updateData = {
             title,
             slug,
@@ -240,6 +246,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
             description,
             category,
             tags: tags || [],
+            readTime,
             updatedAt: Date.now()
         };
         
@@ -268,7 +275,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         await article.populate('category');
         await article.populate('tags');
         
-        console.log('Article updated successfully:', article._id);
+        console.log('Article updated successfully:', article._id, 'Read time:', article.readTime);
         
         res.json(article);
     } catch (error) {

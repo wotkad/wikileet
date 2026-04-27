@@ -1,6 +1,6 @@
 import { getArticle, createArticle, updateArticle, getCategories, getTags } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml, generateSlug, isValidSlug, calculateReadTime } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let simplemde = null;
@@ -58,10 +58,9 @@ export default async function ArticleEditPage(params) {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Slug * (URL identifier)</label>
+                        <label class="block text-sm font-medium mb-2">Slug (URL identifier)</label>
                         <input type="text" 
                                id="slug" 
-                               required
                                placeholder="Leave empty to auto-generate from title"
                                pattern="[a-z0-9-]+"
                                title="Only lowercase letters, numbers, and hyphens"
@@ -82,6 +81,7 @@ export default async function ArticleEditPage(params) {
                 
                 <div>
                     <label class="block text-sm font-medium mb-2">Content * (Markdown supported)</label>
+                    <!-- Убираем required у textarea, так как SimpleMDE скрывает её -->
                     <textarea id="content" 
                               rows="15"
                               class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${escapeHtml(article?.content || '')}</textarea>
@@ -115,7 +115,6 @@ export default async function ArticleEditPage(params) {
                     </div>
                 </div>
                 
-                <!-- Разные кнопки для создания и редактирования -->
                 ${isEdit ? `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -162,20 +161,6 @@ export default async function ArticleEditPage(params) {
     `;
 }
 
-// Функция для генерации slug из заголовка
-function generateSlug(title) {
-    if (!title || title.trim() === '') {
-        return '';
-    }
-    
-    return title
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/--+/g, '-')
-        .replace(/^-+|-+$/g, '');
-}
-
 function initMarkdownEditor(isNew = false) {
     const textarea = document.getElementById('content');
     if (!textarea) return;
@@ -188,7 +173,6 @@ function initMarkdownEditor(isNew = false) {
         } catch(e) {}
     }
     
-    // Для новой статьи очищаем autosave
     if (isNew) {
         localStorage.removeItem('smde_article_content');
     }
@@ -215,7 +199,6 @@ function initMarkdownEditor(isNew = false) {
 function createSimpleMDE(textarea, isNew = false) {
     setTimeout(() => {
         try {
-            // Если это новая статья и нет содержимого, очищаем autosave
             if (isNew && (!textarea.value || textarea.value.trim() === '')) {
                 localStorage.removeItem('smde_article_content');
             }
@@ -239,7 +222,6 @@ function createSimpleMDE(textarea, isNew = false) {
                 status: ["lines", "words", "cursor"],
             });
             
-            // Если это новая статья и редактор пустой, очищаем значение
             if (isNew && window.simplemde.value() === '') {
                 window.simplemde.value('');
             }
@@ -279,15 +261,12 @@ window.initArticleEdit = async function(slug) {
         form.onsubmit = async (e) => {
             e.preventDefault();
             
-            // Определяем статус на основе нажатой кнопки или выбранного статуса в дропдауне
             const submitter = e.submitter;
             let status;
             
             if (isEdit) {
-                // При редактировании берем статус из дропдауна
                 status = document.getElementById('status')?.value || 'draft';
             } else {
-                // При создании берем из нажатой кнопки
                 const action = submitter?.value;
                 status = action === 'published' ? 'published' : 'draft';
             }
@@ -305,24 +284,50 @@ window.initArticleEdit = async function(slug) {
             const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
             const tags = Array.from(tagCheckboxes).map(cb => cb.value);
             
+            // Валидация вручную
+            if (!title) {
+                window.toast?.warning('Please enter a title');
+                document.getElementById('title').focus();
+                return;
+            }
+            
+            if (!description) {
+                window.toast?.warning('Please enter a description');
+                document.getElementById('description').focus();
+                return;
+            }
+            
+            if (!category) {
+                window.toast?.warning('Please select a category');
+                document.getElementById('category').focus();
+                return;
+            }
+            
+            if (!content) {
+                window.toast?.warning('Please enter content');
+                if (window.simplemde) {
+                    window.simplemde.codemirror.focus();
+                }
+                return;
+            }
+            
+            // Если slug пустой, генерируем из title
             if (!formSlug) {
                 formSlug = generateSlug(title);
                 if (!formSlug) {
-                    window.toast?.warning('Please enter a title or provide a slug');
+                    window.toast?.warning('Please enter a title');
                     return;
                 }
             }
             
-            if (!title || !formSlug || !description || !category || !content) {
-                window.toast?.warning('Please fill in all required fields');
-                return;
-            }
-            
-            if (!/^[a-z0-9-]+$/.test(formSlug)) {
+            // Валидация slug
+            if (!isValidSlug(formSlug)) {
                 window.toast?.error('Slug can only contain lowercase letters, numbers, and hyphens');
+                document.getElementById('slug').focus();
                 return;
             }
             
+            // Предупреждение при изменении slug
             if (isEdit && oldSlug && formSlug !== oldSlug) {
                 const confirmed = await showConfirmDialog(
                     'Change Slug?',
@@ -334,27 +339,14 @@ window.initArticleEdit = async function(slug) {
             }
             
             try {
-                const articleData = { 
-                    title, 
-                    slug: formSlug, 
-                    description, 
-                    category, 
-                    tags, 
-                    content, 
-                    status 
-                };
-                
-                console.log('Sending article data:', articleData);
-                
+                const articleData = { title, slug: formSlug, description, category, tags, content, status };
                 let result;
                 
                 if (isEdit) {
                     result = await updateArticle(oldSlug, articleData);
-                    console.log('Update result:', result);
                     window.toast?.success(`Article "${title}" updated successfully`);
                 } else {
                     result = await createArticle(articleData);
-                    console.log('Create result:', result);
                     const message = status === 'published' ? 'published' : 'saved as draft';
                     window.toast?.success(`Article "${title}" ${message} successfully`);
                 }
