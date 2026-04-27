@@ -118,6 +118,18 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/users - получение списка пользователей для админа
+router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const users = await User.find({}, 'name email role _id').sort('name');
+        res.json(users);
+    } catch (error) {
+        console.error('Error in GET /users:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/articles/:slug - получение одной статьи
 router.get('/:slug', async (req, res) => {
     try {
@@ -190,9 +202,9 @@ router.get('/:slug', async (req, res) => {
 // POST /api/articles - создание статьи (admin only)
 router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { title, slug, content, description, category, tags, status } = req.body;
+        const { title, slug, content, description, category, tags, status, publishedAt, author } = req.body;
         
-        console.log('Creating article with data:', { title, slug, description, category, tags, status });
+        console.log('Creating article with data:', { title, slug, status, publishedAt, author });
         
         if (!title || !slug || !content || !description || !category) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -203,20 +215,32 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Article with this slug already exists' });
         }
         
-        const article = new Article({
+        // Определяем автора
+        let authorId = author || req.userId;
+        
+        const articleData = {
             title,
             slug,
             content,
             description,
             category,
             tags: tags || [],
-            status: status || 'draft',
-            author: req.userId,
-        });
+            author: authorId,
+        };
         
+        // Обработка статуса и даты публикации
+        if (status === 'published') {
+            articleData.status = 'published';
+            articleData.publishedAt = publishedAt ? new Date(publishedAt) : new Date();
+        } else {
+            articleData.status = 'draft';
+        }
+        
+        const article = new Article(articleData);
         await article.save();
         await article.populate('category');
         await article.populate('tags');
+        await article.populate('author', 'name email');
         
         console.log('Article created successfully:', article._id);
         
@@ -231,15 +255,14 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, title, slug, content, description, category, tags } = req.body;
+        const { title, slug, content, description, category, tags, status, publishedAt, author } = req.body;
         
-        console.log('Updating article with ID:', id, 'Data:', { title, slug, status });
+        console.log('Updating article with ID:', id, 'Data:', { title, slug, status, publishedAt, author });
         
         // Рассчитываем время чтения
-        const wordsPerMinute = 200;
         const text = content.replace(/<[^>]*>/g, '');
         const words = text.trim().split(/\s+/).length;
-        const readTime = Math.max(1, Math.ceil(words / wordsPerMinute));
+        const readTime = Math.max(1, Math.ceil(words / 200));
         
         const updateData = {
             title,
@@ -248,20 +271,23 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
             description,
             category,
             tags: tags || [],
+            author: author || req.userId,
             readTime,
             updatedAt: Date.now()
         };
         
-        // Если статус меняется на published и publishedAt не установлен
+        // Обработка статуса и даты публикации
         if (status === 'published') {
-            const existingArticle = await Article.findById(id);
-            if (existingArticle && existingArticle.status !== 'published') {
-                updateData.publishedAt = Date.now();
+            updateData.status = 'published';
+            if (publishedAt) {
+                updateData.publishedAt = new Date(publishedAt);
+            } else {
+                // Если дата не указана, оставляем существующую или устанавливаем текущую
+                const existingArticle = await Article.findById(id);
+                updateData.publishedAt = existingArticle?.publishedAt || new Date();
             }
-        }
-        
-        if (status) {
-            updateData.status = status;
+        } else {
+            updateData.status = 'draft';
         }
         
         const article = await Article.findByIdAndUpdate(
@@ -276,8 +302,74 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         
         await article.populate('category');
         await article.populate('tags');
+        await article.populate('author', 'name email');
         
-        console.log('Article updated successfully:', article._id, 'Read time:', article.readTime);
+        console.log('Article updated successfully:', article._id);
+        
+        res.json(article);
+    } catch (error) {
+        console.error('Error in PUT /articles/:id:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT /api/articles/:id - обновление статьи (admin only)
+router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, slug, content, description, category, tags, status, scheduledPublishDate, author } = req.body;
+        
+        console.log('Updating article with ID:', id, 'Data:', { title, slug, status, scheduledPublishDate, author });
+        
+        // Рассчитываем время чтения
+        const text = content.replace(/<[^>]*>/g, '');
+        const words = text.trim().split(/\s+/).length;
+        const readTime = Math.max(1, Math.ceil(words / 200));
+        
+        const updateData = {
+            title,
+            slug,
+            content,
+            description,
+            category,
+            tags: tags || [],
+            author: author || req.userId,
+            readTime,
+            updatedAt: Date.now()
+        };
+        
+        // Обработка статуса и даты публикации
+        if (status === 'scheduled' && scheduledPublishDate) {
+            updateData.status = 'scheduled';
+            updateData.scheduledPublishDate = new Date(scheduledPublishDate);
+            // Не меняем publishedAt
+        } else if (status === 'published') {
+            updateData.status = 'published';
+            // Если статья была не опубликована, устанавливаем дату публикации
+            const existingArticle = await Article.findById(id);
+            if (existingArticle && existingArticle.status !== 'published') {
+                updateData.publishedAt = Date.now();
+            }
+        } else {
+            updateData.status = 'draft';
+            updateData.scheduledPublishDate = null;
+        }
+        
+        const article = await Article.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        );
+        
+        if (!article) {
+            return res.status(404).json({ error: 'Article not found' });
+        }
+        
+        await article.populate('category');
+        await article.populate('tags');
+        await article.populate('author', 'name email');
+        
+        console.log('Article updated successfully:', article._id);
         
         res.json(article);
     } catch (error) {

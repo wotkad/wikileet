@@ -198,3 +198,8 @@ export async function getUserArticles(userId) {
     const data = await request(`/articles?author=${userId}&limit=50`);
     return data || { articles: [], total: 0 };
 }
+
+export async function getUsers() {
+    const data = await request('/articles/users');
+    return Array.isArray(data) ? data : [];
+}

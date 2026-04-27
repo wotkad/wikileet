@@ -1,6 +1,6 @@
-import { getArticle, createArticle, updateArticle, getCategories, getTags } from '../../api.js';
+import { getArticle, createArticle, updateArticle, getCategories, getTags, getUsers } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml, generateSlug, isValidSlug, calculateReadTime } from '../../utils/utils.js';
+import { escapeHtml, generateSlug, isValidSlug } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let simplemde = null;
@@ -12,11 +12,13 @@ export default async function ArticleEditPage(params) {
     let article = null;
     let categories = [];
     let tags = [];
+    let users = [];
     
     try {
-        [categories, tags] = await Promise.all([
+        [categories, tags, users] = await Promise.all([
             getCategories(),
-            getTags()
+            getTags(),
+            getUsers()
         ]);
         
         if (isEdit) {
@@ -36,7 +38,16 @@ export default async function ArticleEditPage(params) {
         console.error('Error loading data:', error);
     }
     
-    const currentStatus = article?.status || 'draft';
+    // Форматируем дату для поля datetime-local
+    const formatDateForInput = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toISOString().slice(0, 16);
+    };
+    
+    // Получаем дату публикации (если есть, иначе текущую)
+    const publishDate = article?.publishedAt || new Date();
+    const currentPublishDate = formatDateForInput(publishDate);
     
     return `
         <div class="max-w-6xl mx-auto">
@@ -66,8 +77,7 @@ export default async function ArticleEditPage(params) {
                                title="Only lowercase letters, numbers, and hyphens"
                                value="${escapeHtml(article?.slug || '')}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">Leave empty to auto-generate from title. Example: my-awesome-article (only lowercase letters, numbers, and hyphens)</p>
-                        ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Auto-generated from title if left empty</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Editing slug will change the article URL</p>'}
+                        <p class="text-xs text-gray-500 mt-1">Leave empty to auto-generate from title. Example: my-awesome-article</p>
                     </div>
                 </div>
                 
@@ -81,16 +91,15 @@ export default async function ArticleEditPage(params) {
                 
                 <div>
                     <label class="block text-sm font-medium mb-2">Content * (Markdown supported)</label>
-                    <!-- Убираем required у textarea, так как SimpleMDE скрывает её -->
                     <textarea id="content" 
                               rows="15"
-                              class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${escapeHtml(article?.content || '')}</textarea>
+                              class="w-full px-4 py-2 bg-gray-800 rounded-lg">${escapeHtml(article?.content || '')}</textarea>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium mb-2">Category *</label>
-                        <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg">
                             <option value="">Select a category</option>
                             ${categories.map(cat => `
                                 <option value="${cat._id}" ${article?.category?._id === cat._id ? 'selected' : ''}>
@@ -101,61 +110,59 @@ export default async function ArticleEditPage(params) {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Tags (select multiple)</label>
-                        <div class="flex flex-wrap gap-2 p-3 bg-gray-800 rounded-lg max-h-32 overflow-y-auto" id="tags-container">
-                            ${tags.map(tag => `
-                                <label class="flex items-center space-x-2 px-3 py-1 bg-gray-700 rounded-full cursor-pointer hover:bg-gray-600 transition">
-                                    <input type="checkbox" value="${tag._id}" 
-                                           ${article?.tags?.some(t => t._id === tag._id) ? 'checked' : ''}
-                                           class="tag-checkbox">
-                                    <span class="text-sm">${escapeHtml(tag.name)}</span>
-                                </label>
+                        <label class="block text-sm font-medium mb-2">Author</label>
+                        <select id="author" class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                            <option value="">Select author (default: current user)</option>
+                            ${users.map(user => `
+                                <option value="${user._id}" ${article?.author?._id === user._id ? 'selected' : ''}>
+                                    ${escapeHtml(user.name)} (${escapeHtml(user.email)})
+                                </option>
                             `).join('')}
-                        </div>
+                        </select>
                     </div>
                 </div>
                 
-                ${isEdit ? `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Status</label>
-                            <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>
-                                    📝 Draft (not visible to users)
-                                </option>
-                                <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>
-                                    🚀 Published (visible to everyone)
-                                </option>
-                            </select>
-                        </div>
-                        <div></div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Tags (select multiple)</label>
+                    <div class="flex flex-wrap gap-2 p-3 bg-gray-800 rounded-lg max-h-32 overflow-y-auto" id="tags-container">
+                        ${tags.map(tag => `
+                            <label class="flex items-center space-x-2 px-3 py-1 bg-gray-700 rounded-full cursor-pointer hover:bg-gray-600 transition">
+                                <input type="checkbox" value="${tag._id}" 
+                                       ${article?.tags?.some(t => t._id === tag._id) ? 'checked' : ''}
+                                       class="tag-checkbox">
+                                <span class="text-sm">${escapeHtml(tag.name)}</span>
+                            </label>
+                        `).join('')}
                     </div>
-                    <div class="flex gap-4">
-                        <button type="submit" name="action" value="save" 
-                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
-                            💾 Save Changes
-                        </button>
-                        <a href="/admin/articles" 
-                           class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
-                            Cancel
-                        </a>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Status</label>
+                        <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                            <option value="draft" ${article?.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
+                            <option value="published" ${article?.status === 'published' ? 'selected' : ''}>🚀 Published</option>
+                        </select>
                     </div>
-                ` : `
-                    <div class="flex gap-4">
-                        <button type="submit" name="action" value="draft" 
-                                class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">
-                            💾 Save as Draft
-                        </button>
-                        <button type="submit" name="action" value="published" 
-                                class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
-                            🚀 Publish
-                        </button>
-                        <a href="/admin/articles" 
-                           class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
-                            Cancel
-                        </a>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Publish Date</label>
+                        <input type="datetime-local" 
+                               id="publishDate" 
+                               value="${currentPublishDate}"
+                               class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                        <p class="text-xs text-gray-500 mt-1">Leave as is for current date/time</p>
                     </div>
-                `}
+                </div>
+                
+                <div class="flex gap-4">
+                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                        💾 Save Article
+                    </button>
+                    <a href="/admin/articles" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
+                        Cancel
+                    </a>
+                </div>
             </form>
         </div>
     `;
@@ -261,16 +268,6 @@ window.initArticleEdit = async function(slug) {
         form.onsubmit = async (e) => {
             e.preventDefault();
             
-            const submitter = e.submitter;
-            let status;
-            
-            if (isEdit) {
-                status = document.getElementById('status')?.value || 'draft';
-            } else {
-                const action = submitter?.value;
-                status = action === 'published' ? 'published' : 'draft';
-            }
-            
             let content = document.getElementById('content').value;
             if (window.simplemde && window.simplemdeInitialized) {
                 content = window.simplemde.value();
@@ -280,11 +277,14 @@ window.initArticleEdit = async function(slug) {
             let formSlug = document.getElementById('slug').value;
             const description = document.getElementById('description').value;
             const category = document.getElementById('category').value;
+            const author = document.getElementById('author')?.value || null;
+            const status = document.getElementById('status').value;
+            let publishDate = document.getElementById('publishDate').value;
             
             const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
             const tags = Array.from(tagCheckboxes).map(cb => cb.value);
             
-            // Валидация вручную
+            // Валидация
             if (!title) {
                 window.toast?.warning('Please enter a title');
                 document.getElementById('title').focus();
@@ -327,6 +327,14 @@ window.initArticleEdit = async function(slug) {
                 return;
             }
             
+            // Если дата не указана, используем текущую
+            let publishedAt = null;
+            if (publishDate) {
+                publishedAt = new Date(publishDate);
+            } else if (status === 'published') {
+                publishedAt = new Date();
+            }
+            
             // Предупреждение при изменении slug
             if (isEdit && oldSlug && formSlug !== oldSlug) {
                 const confirmed = await showConfirmDialog(
@@ -339,7 +347,17 @@ window.initArticleEdit = async function(slug) {
             }
             
             try {
-                const articleData = { title, slug: formSlug, description, category, tags, content, status };
+                const articleData = { 
+                    title, 
+                    slug: formSlug, 
+                    description, 
+                    category, 
+                    tags, 
+                    content, 
+                    status,
+                    author,
+                    publishedAt
+                };
                 let result;
                 
                 if (isEdit) {
@@ -347,8 +365,7 @@ window.initArticleEdit = async function(slug) {
                     window.toast?.success(`Article "${title}" updated successfully`);
                 } else {
                     result = await createArticle(articleData);
-                    const message = status === 'published' ? 'published' : 'saved as draft';
-                    window.toast?.success(`Article "${title}" ${message} successfully`);
+                    window.toast?.success(`Article "${title}" created successfully`);
                 }
                 
                 window.router.navigate(`/admin/articles`);
