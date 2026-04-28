@@ -48,24 +48,22 @@ function renderUserSection(user) {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
             </button>
-            <div class="pt-2">
-                <div class="absolute right-0 mt-0 w-48 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden group-hover:block z-50">
-                    <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
-                        👤 My Profile
+            <div class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden group-hover:block z-50">
+                <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                    👤 My Profile
+                </a>
+                <a href="/users" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                    👥 Community
+                </a>
+                ${user.role === 'admin' ? `
+                    <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                        ⚙️ Admin Panel
                     </a>
-                    <a href="/users" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
-                        👥 Community
-                    </a>
-                    ${user.role === 'admin' ? `
-                        <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
-                            ⚙️ Admin Panel
-                        </a>
-                    ` : ''}
-                    <hr class="border-gray-700">
-                    <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm text-red-400">
-                        🚪 Logout
-                    </button>
-                </div>
+                ` : ''}
+                <hr class="border-gray-700">
+                <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm text-red-400">
+                    🚪 Logout
+                </button>
             </div>
         </div>
     `;

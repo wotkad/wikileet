@@ -2,14 +2,18 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { transliterate } = require('transliteration');
 
+// Функция для генерации slug из имени с транслитерацией
 function generateSlug(name) {
+    // Сначала транслитерируем русские буквы в латиницу
     let latinName = transliterate(name);
+    
+    // Затем преобразуем в slug
     return latinName
         .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/--+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/[^\w\s-]/g, '')      // Удаляем спецсимволы
+        .replace(/\s+/g, '-')           // Заменяем пробелы на тире
+        .replace(/--+/g, '-')           // Заменяем несколько тире на одно
+        .replace(/^-+|-+$/g, '');       // Удаляем тире в начале и конце
 }
 
 const userSchema = new mongoose.Schema({
@@ -21,7 +25,7 @@ const userSchema = new mongoose.Schema({
     slug: {
         type: String,
         unique: true,
-        sparse: true,
+        sparse: true, // Позволяет быть null, но уникальным если есть значение
     },
     email: {
         type: String,
@@ -44,10 +48,6 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'admin'],
         default: 'user',
     },
-    lastSeen: {
-        type: Date,
-        default: Date.now,
-    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -56,17 +56,20 @@ const userSchema = new mongoose.Schema({
 
 // Генерация slug перед сохранением
 userSchema.pre('save', async function(next) {
+    // Генерируем slug из имени
     if (this.isModified('name')) {
         let baseSlug = generateSlug(this.name);
         let slug = baseSlug;
         let counter = 1;
         
+        // Проверяем уникальность slug
         const User = mongoose.model('User');
         while (await User.findOne({ slug, _id: { $ne: this._id } })) {
             slug = `${baseSlug}-${counter}`;
             counter++;
         }
         this.slug = slug;
+        console.log(`Generated slug "${slug}" for user "${this.name}"`);
     }
     
     next();

@@ -1,5 +1,4 @@
 import { escapeHtml } from '../utils/utils.js';
-import { isUserOnline, forceUpdateStatus } from '../socket.js';
 
 let currentFilters = {
     search: '',
@@ -9,127 +8,6 @@ let currentFilters = {
 };
 
 let searchDebounceTimer = null;
-
-// API функции
-async function getUsers(filters) {
-    const params = new URLSearchParams();
-    if (filters.search) params.append('search', filters.search);
-    if (filters.role && filters.role !== 'all') params.append('role', filters.role);
-    if (filters.sort) params.append('sort', filters.sort);
-    if (filters.page) params.append('page', filters.page);
-    params.append('limit', '20');
-    
-    const response = await fetch(`/api/profile/users?${params.toString()}`, {
-        credentials: 'include'
-    });
-    
-    if (!response.ok) {
-        throw new Error('Failed to fetch users');
-    }
-    
-    return response.json();
-}
-
-async function getUserStats() {
-    const response = await fetch('/api/profile/users/stats', {
-        credentials: 'include'
-    });
-    
-    if (!response.ok) {
-        return { totalUsers: 0, adminCount: 0, userCount: 0 };
-    }
-    
-    return response.json();
-}
-
-function renderUsersList(users) {
-    if (!users || users.length === 0) {
-        return '<div class="text-center py-8 text-gray-400">No users found</div>';
-    }
-    
-    return users.map(user => {
-        const online = isUserOnline(user._id);
-        const lastSeen = user.lastSeen ? new Date(user.lastSeen) : new Date();
-        const now = new Date();
-        const diffMinutes = Math.floor((now - lastSeen) / (1000 * 60));
-        
-        let statusHtml = '';
-        if (online) {
-            statusHtml = '<span class="flex items-center gap-1 text-xs text-green-400"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Online</span>';
-        } else if (diffMinutes < 1) {
-            statusHtml = '<span class="text-xs text-gray-500">Just now</span>';
-        } else if (diffMinutes < 60) {
-            statusHtml = `<span class="text-xs text-gray-500">Last seen ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago</span>`;
-        } else if (diffMinutes < 1440) {
-            const hours = Math.floor(diffMinutes / 60);
-            statusHtml = `<span class="text-xs text-gray-500">Last seen ${hours} hour${hours !== 1 ? 's' : ''} ago</span>`;
-        } else {
-            const days = Math.floor(diffMinutes / 1440);
-            statusHtml = `<span class="text-xs text-gray-500">Last seen ${days} day${days !== 1 ? 's' : ''} ago</span>`;
-        }
-        
-        return `
-            <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
-                <div class="flex items-start gap-4">
-                    <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : '/api/profile/avatar/default-avatar.png'}" 
-                         alt="${escapeHtml(user.name)}"
-                         class="w-12 h-12 rounded-full object-cover">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
-                                ${escapeHtml(user.name)}
-                            </a>
-                            ${user.role === 'admin' ? 
-                                '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Admin</span>' : 
-                                '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Member</span>'
-                            }
-                            ${statusHtml}
-                        </div>
-                        <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
-                        <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                            <span>📅 Joined: ${new Date(user.createdAt).toLocaleDateString()}</span>
-                            <span>📝 ${user.articlesCount || 0} articles</span>
-                            <span>👁️ ${user.totalViews || 0} total views</span>
-                        </div>
-                    </div>
-                    <a href="/profile/${user.slug}" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition whitespace-nowrap">
-                        View Profile
-                    </a>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function renderPagination(data) {
-    return `
-        <div class="flex justify-center gap-2 mt-8">
-            ${Array.from({ length: Math.min(data.totalPages, 10) }, (_, i) => i + 1).map(page => `
-                <button class="page-btn px-3 py-1 rounded ${page === currentFilters.page ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
-                        data-page="${page}">
-                    ${page}
-                </button>
-            `).join('')}
-        </div>
-    `;
-}
-
-function performSearch() {
-    if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
-    }
-    
-    searchDebounceTimer = setTimeout(() => {
-        const params = new URLSearchParams();
-        if (currentFilters.search) params.set('search', currentFilters.search);
-        if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-        if (currentFilters.sort) params.set('sort', currentFilters.sort);
-        if (currentFilters.page > 1) params.set('page', currentFilters.page);
-        
-        window.router.navigate(`/users?${params.toString()}`);
-        searchDebounceTimer = null;
-    }, 500);
-}
 
 export default async function UsersPage() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -141,6 +19,7 @@ export default async function UsersPage() {
         page: parseInt(urlParams.get('page')) || 1,
     };
     
+    // Получаем данные
     const [usersData, stats] = await Promise.all([
         getUsers(currentFilters),
         getUserStats()
@@ -211,73 +90,108 @@ export default async function UsersPage() {
     `;
 }
 
-// Инициализация страницы
+function renderUsersList(users) {
+    if (!users || users.length === 0) {
+        return '<div class="text-center py-8 text-gray-400">No users found</div>';
+    }
+    
+    return users.map(user => `
+        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
+            <div class="flex items-start gap-4">
+                <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : '/api/profile/avatar/default-avatar.png'}" 
+                     alt="${escapeHtml(user.name)}"
+                     class="w-12 h-12 rounded-full object-cover">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
+                            ${escapeHtml(user.name)}
+                        </a>
+                        ${user.role === 'admin' ? 
+                            '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Admin</span>' : 
+                            '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Member</span>'
+                        }
+                    </div>
+                    <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
+                    <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                        <span>📅 Joined: ${new Date(user.createdAt).toLocaleDateString()}</span>
+                        <span>📝 ${user.articlesCount || 0} articles</span>
+                        <span>👁️ ${user.totalViews || 0} total views</span>
+                    </div>
+                </div>
+                <a href="/profile/${user.slug}" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition whitespace-nowrap">
+                    View Profile
+                </a>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPagination(data) {
+    return `
+        <div class="flex justify-center gap-2 mt-8">
+            ${Array.from({ length: Math.min(data.totalPages, 10) }, (_, i) => i + 1).map(page => `
+                <button class="page-btn px-3 py-1 rounded ${page === currentFilters.page ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+                        data-page="${page}">
+                    ${page}
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
+// API функции
+async function getUsers(filters) {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.role && filters.role !== 'all') params.append('role', filters.role);
+    if (filters.sort) params.append('sort', filters.sort);
+    if (filters.page) params.append('page', filters.page);
+    params.append('limit', '20');
+    
+    const response = await fetch(`/api/profile/users?${params.toString()}`, {
+        credentials: 'include'
+    });
+    
+    if (!response.ok) {
+        throw new Error('Failed to fetch users');
+    }
+    
+    return response.json();
+}
+
+async function getUserStats() {
+    const response = await fetch('/api/profile/users/stats', {
+        credentials: 'include'
+    });
+    
+    if (!response.ok) {
+        return { totalUsers: 0, adminCount: 0, userCount: 0 };
+    }
+    
+    return response.json();
+}
+
+// Функция для выполнения поиска с debounce
+function performSearch() {
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
+    
+    searchDebounceTimer = setTimeout(() => {
+        const params = new URLSearchParams();
+        if (currentFilters.search) params.set('search', currentFilters.search);
+        if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
+        if (currentFilters.sort) params.set('sort', currentFilters.sort);
+        if (currentFilters.page > 1) params.set('page', currentFilters.page);
+        
+        window.router.navigate(`/users?${params.toString()}`);
+        searchDebounceTimer = null;
+    }, 500);
+}
+
+// Инициализация событий
 window.initUsersPage = function() {
-    console.log('[UsersPage] Initializing');
-    
-    let refreshTimer = null;
-    let isRefreshing = false;
-    
-    // Принудительно запрашиваем обновление статуса
-    if (typeof forceUpdateStatus === 'function') {
-        forceUpdateStatus();
-    }
-    
-    const refreshUsersList = () => {
-        if (isRefreshing) {
-            console.log('[UsersPage] Already refreshing, skipping');
-            return;
-        }
-        
-        isRefreshing = true;
-        
-        const usersContainer = document.getElementById('users-list');
-        if (!usersContainer) {
-            isRefreshing = false;
-            return;
-        }
-        
-        getUsers(currentFilters).then(usersData => {
-            if (document.getElementById('users-list')) {
-                usersContainer.innerHTML = renderUsersList(usersData.users);
-                attachPaginationEvents();
-            }
-            isRefreshing = false;
-        }).catch(err => {
-            console.error('[UsersPage] Error refreshing:', err);
-            isRefreshing = false;
-        });
-    };
-    
-    // Обновляем только при реальных изменениях онлайн статуса
-    const handleOnlineUpdate = () => {
-        if (refreshTimer) clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(() => {
-            refreshUsersList();
-            refreshTimer = null;
-        }, 300);
-    };
-    
-    window.addEventListener('onlineUsersUpdated', handleOnlineUpdate);
-    
-    // Функция для привязки событий пагинации
-    function attachPaginationEvents() {
-        document.querySelectorAll('.page-btn').forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            
-            newBtn.addEventListener('click', () => {
-                currentFilters.page = parseInt(newBtn.dataset.page);
-                const params = new URLSearchParams();
-                if (currentFilters.search) params.set('search', currentFilters.search);
-                if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-                if (currentFilters.sort) params.set('sort', currentFilters.sort);
-                if (currentFilters.page > 1) params.set('page', currentFilters.page);
-                
-                window.router.navigate(`/users?${params.toString()}`);
-            });
-        });
-    }
+    console.log('Initializing users page');
     
     // Поиск с debounce и сохранением фокуса
     const searchInput = document.getElementById('searchInput');
@@ -353,12 +267,20 @@ window.initUsersPage = function() {
         });
     }
     
-    // Сохраняем для очистки
-    window.usersPageCleanup = () => {
-        window.removeEventListener('onlineUsersUpdated', handleOnlineUpdate);
-        if (refreshTimer) clearTimeout(refreshTimer);
-    };
-    
-    // Первоначальная загрузка
-    refreshUsersList();
+    // Пагинация
+    document.querySelectorAll('.page-btn').forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', () => {
+            currentFilters.page = parseInt(newBtn.dataset.page);
+            const params = new URLSearchParams();
+            if (currentFilters.search) params.set('search', currentFilters.search);
+            if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
+            if (currentFilters.sort) params.set('sort', currentFilters.sort);
+            if (currentFilters.page > 1) params.set('page', currentFilters.page);
+            
+            window.router.navigate(`/users?${params.toString()}`);
+        });
+    });
 };

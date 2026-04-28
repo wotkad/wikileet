@@ -21,7 +21,6 @@
     "multer": "^2.1.1",
     "sharp": "^0.34.5",
     "simplemde": "^1.11.2",
-    "socket.io": "^4.8.3",
     "transliteration": "^2.6.1",
     "uuid": "^14.0.0"
   },

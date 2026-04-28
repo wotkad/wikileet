@@ -1,7 +1,6 @@
 import { getState } from '../state.js';
 import { getUserArticles } from '../api.js';
 import { escapeHtml } from '../utils/utils.js';
-import { isUserOnline, forceUpdateStatus } from '../socket.js';
 
 export default async function ProfilePage() {
     const state = getState();
@@ -30,27 +29,6 @@ export default async function ProfilePage() {
     
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
     
-    // Определяем статус онлайн для текущего пользователя
-    const isOnline = isUserOnline(userId);
-    const lastSeen = user.lastSeen ? new Date(user.lastSeen) : new Date();
-    const now = new Date();
-    const diffMinutes = Math.floor((now - lastSeen) / (1000 * 60));
-    
-    let statusHtml = '';
-    if (isOnline) {
-        statusHtml = '<span class="flex items-center gap-1 text-green-400"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Online now</span>';
-    } else if (diffMinutes < 1) {
-        statusHtml = '<span class="text-gray-400">Online recently</span>';
-    } else if (diffMinutes < 60) {
-        statusHtml = `<span class="text-gray-400">Last seen ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago</span>`;
-    } else if (diffMinutes < 1440) {
-        const hours = Math.floor(diffMinutes / 60);
-        statusHtml = `<span class="text-gray-400">Last seen ${hours} hour${hours !== 1 ? 's' : ''} ago</span>`;
-    } else {
-        const days = Math.floor(diffMinutes / 1440);
-        statusHtml = `<span class="text-gray-400">Last seen ${days} day${days !== 1 ? 's' : ''} ago</span>`;
-    }
-    
     return `
         <div class="max-w-4xl mx-auto">
             <div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg p-8 mb-8">
@@ -75,15 +53,12 @@ export default async function ProfilePage() {
                     <div>
                         <h1 class="text-3xl font-bold" id="user-name-display">${escapeHtml(user.name)}</h1>
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
-                        <div class="flex flex-wrap gap-3 mt-3">
+                        <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
                                 ${user.role === 'admin' ? '👑 Administrator' : '📖 Member'}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
                                 📅 Registered: ${registeredDate}
-                            </span>
-                            <span id="user-status" class="px-3 py-1 bg-gray-700 rounded-full text-sm">
-                                ${statusHtml}
                             </span>
                         </div>
                     </div>
@@ -209,51 +184,4 @@ function renderStatusBadge(status) {
     } else {
         return '<span class="px-2 py-0.5 bg-yellow-900 text-yellow-300 rounded-full text-xs font-medium">📝 Draft</span>';
     }
-}
-
-// Функция для обновления статуса на странице
-function updateProfileStatus() {
-    const statusElement = document.getElementById('user-status');
-    if (statusElement) {
-        const state = getState();
-        const user = state.currentUser;
-        if (user) {
-            const isOnline = isUserOnline(user._id);
-            const lastSeen = user.lastSeen ? new Date(user.lastSeen) : new Date();
-            const now = new Date();
-            const diffMinutes = Math.floor((now - lastSeen) / (1000 * 60));
-            
-            let statusHtml = '';
-            if (isOnline) {
-                statusHtml = '<span class="flex items-center gap-1 text-green-400"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Online now</span>';
-            } else if (diffMinutes < 1) {
-                statusHtml = '<span class="text-gray-400">Online recently</span>';
-            } else if (diffMinutes < 60) {
-                statusHtml = `<span class="text-gray-400">Last seen ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago</span>`;
-            } else if (diffMinutes < 1440) {
-                const hours = Math.floor(diffMinutes / 60);
-                statusHtml = `<span class="text-gray-400">Last seen ${hours} hour${hours !== 1 ? 's' : ''} ago</span>`;
-            } else {
-                const days = Math.floor(diffMinutes / 1440);
-                statusHtml = `<span class="text-gray-400">Last seen ${days} day${days !== 1 ? 's' : ''} ago</span>`;
-            }
-            
-            statusElement.innerHTML = statusHtml;
-        }
-    }
-}
-
-// Подписываемся на обновления статуса
-if (typeof window !== 'undefined') {
-    // Принудительно запрашиваем обновление статуса
-    setTimeout(() => {
-        if (typeof forceUpdateStatus === 'function') {
-            forceUpdateStatus();
-        }
-    }, 500);
-    
-    // Слушаем обновления онлайн статуса
-    window.addEventListener('onlineUsersUpdated', () => {
-        updateProfileStatus();
-    });
 }
