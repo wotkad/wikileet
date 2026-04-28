@@ -27,8 +27,14 @@ export function setAuth(user) {
 }
 
 export function clearAuth() {
-    console.log('Clearing auth');
-    setState({ currentUser: null });
+    console.log('[State] Clearing auth');
+    state.currentUser = null;
+    
+    // Обновляем header
+    updateUI();
+    
+    // Уведомляем слушателей
+    listeners.forEach(listener => listener(state));
 }
 
 export function subscribe(listener) {
