@@ -197,3 +197,8 @@ export async function getUserArticles(userId) {
     const data = await request(`/articles?author=${userId}&limit=50`);
     return data || { articles: [], total: 0 };
 }
+
+export async function getUserBySlug(slug) {
+    const data = await request(`/profile/user/by-slug/${slug}`);
+    return data;
+}

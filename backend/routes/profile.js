@@ -215,4 +215,96 @@ router.get('/user/:id', async (req, res) => {
     }
 });
 
+// Получение пользователя по slug (для публичного профиля)
+router.get('/user/by-slug/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const user = await User.findOne({ slug }).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log(`User found: ${user.name}, role: ${user.role}`); // Для отладки
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Error getting user by slug:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/profile/users - получение всех пользователей с фильтрацией
+router.get('/users', async (req, res) => {
+    try {
+        const { search, role, sort = '-createdAt', page = 1, limit = 20 } = req.query;
+        
+        const query = {};
+        
+        // Фильтр по роли
+        if (role && role !== 'all') {
+            query.role = role;
+        }
+        
+        // Поиск по имени
+        if (search && search.trim()) {
+            query.name = { $regex: search, $options: 'i' };
+        }
+        
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        const users = await User.find(query)
+            .select('-password')
+            .sort(sort)
+            .limit(parseInt(limit))
+            .skip(skip);
+        
+        const total = await User.countDocuments(query);
+        
+        // Для каждого пользователя получаем количество статей
+        const Article = require('../models/Article');
+        const usersWithStats = await Promise.all(users.map(async (user) => {
+            const articlesCount = await Article.countDocuments({ author: user._id, status: 'published' });
+            const totalViews = await Article.aggregate([
+                { $match: { author: user._id, status: 'published' } },
+                { $group: { _id: null, total: { $sum: '$views' } } }
+            ]);
+            
+            return {
+                ...user.toObject(),
+                articlesCount,
+                totalViews: totalViews[0]?.total || 0
+            };
+        }));
+        
+        res.json({
+            users: usersWithStats,
+            totalPages: Math.ceil(total / parseInt(limit)),
+            currentPage: parseInt(page),
+            total,
+        });
+    } catch (error) {
+        console.error('Error getting users:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/profile/users/stats - получение статистики по пользователям
+router.get('/users/stats', async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const adminCount = await User.countDocuments({ role: 'admin' });
+        const userCount = await User.countDocuments({ role: 'user' });
+        
+        res.json({
+            totalUsers,
+            adminCount,
+            userCount,
+        });
+    } catch (error) {
+        console.error('Error getting user stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

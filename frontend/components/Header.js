@@ -52,6 +52,9 @@ function renderUserSection(user) {
                 <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                     👤 My Profile
                 </a>
+                <a href="/users" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
+                    👥 Community
+                </a>
                 ${user.role === 'admin' ? `
                     <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                         ⚙️ Admin Panel

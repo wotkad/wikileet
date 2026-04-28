@@ -4,28 +4,42 @@ export default function ArticleCard(article) {
     const readTime = article.readTime || calculateReadTime(article.content);
     const author = article.author || {};
     const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : '/api/profile/avatar/default-avatar.png';
+    const authorName = author.name || author.email || 'Unknown';
+    const authorSlug = author.slug;
+    
+    // Проверяем, есть ли у автора slug и имя не Unknown
+    const hasValidAuthor = authorSlug && authorName !== 'Unknown' && authorName !== 'Uncategorized';
     
     return `
-        <a href="/wiki/${article.slug}" class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
-            <h3 class="text-lg font-semibold mb-2">${escapeHtml(article.title)}</h3>
-            <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
+        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
+            <a href="/wiki/${article.slug}" class="block">
+                <h3 class="text-lg font-semibold mb-2">${escapeHtml(article.title)}</h3>
+                <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
+            </a>
             <div class="flex flex-wrap items-center gap-2 text-xs">
-                <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">
+                <a href="/wiki?category=${article.category?.slug}" class="px-2 py-1 bg-blue-900 text-blue-300 rounded hover:bg-blue-800 transition">
                     ${escapeHtml(article.category?.name || 'Uncategorized')}
-                </span>
+                </a>
                 ${article.tags?.slice(0, 2).map(tag => `
-                    <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">
+                    <a href="/wiki?tags=${tag.slug}" class="px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition">
                         ${escapeHtml(tag.name)}
-                    </span>
+                    </a>
                 `).join('') || ''}
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTime} min read</span>
-                <div class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded">
-                    <img src="${authorAvatar}" alt="${escapeHtml(author.name || 'Author')}" class="w-4 h-4 rounded-full object-cover">
-                    <span>${escapeHtml(author.name || author.email || 'Unknown')}</span>
-                </div>
+                ${hasValidAuthor ? `
+                    <a href="/profile/${authorSlug}" class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 transition">
+                        <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">
+                        <span>${escapeHtml(authorName)}</span>
+                    </a>
+                ` : `
+                    <div class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded">
+                        <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">
+                        <span>${escapeHtml(authorName)}</span>
+                    </div>
+                `}
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
             </div>
-        </a>
+        </div>
     `;
 }

@@ -17,6 +17,11 @@ export default async function ArticlePage(params) {
         const readTime = article.readTime || calculateReadTime(article.content);
         const author = article.author || {};
         const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : '/api/profile/avatar/default-avatar.png';
+        const authorName = author.name || author.email || 'Unknown';
+        const authorSlug = author.slug;
+        
+        // Проверяем, есть ли у автора slug и имя не Unknown
+        const hasValidAuthor = authorSlug && authorName !== 'Unknown' && authorName !== 'Uncategorized';
         
         return `
             <article class="max-w-4xl mx-auto">
@@ -42,10 +47,19 @@ export default async function ArticlePage(params) {
                         <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
                         <div>⏱️ ${readTime} min read</div>
                         <div>👁️ ${article.views} views</div>
-                        <div class="flex items-center gap-2">
-                            <img src="${authorAvatar}" alt="${escapeHtml(author.name || 'Unknown')}" class="w-5 h-5 rounded-full object-cover">
-                            <span>${escapeHtml(author.name || author.email || 'Unknown')}</span>
-                        </div>
+                        ${hasValidAuthor ? `
+                            <div class="flex items-center gap-2">
+                                <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-5 h-5 rounded-full object-cover">
+                                <a href="/profile/${authorSlug}" class="hover:text-blue-400 transition">
+                                    ${escapeHtml(authorName)}
+                                </a>
+                            </div>
+                        ` : `
+                            <div class="flex items-center gap-2">
+                                <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-5 h-5 rounded-full object-cover">
+                                <span>${escapeHtml(authorName)}</span>
+                            </div>
+                        `}
                     </div>
                     
                     <div class="prose max-w-none">
@@ -60,16 +74,29 @@ export default async function ArticlePage(params) {
                             ${similar.map(art => {
                                 const artAuthor = art.author || {};
                                 const artAuthorAvatar = artAuthor.avatar ? `/api/profile/avatar/${artAuthor.avatar}` : '/api/profile/avatar/default-avatar.png';
+                                const artAuthorName = artAuthor.name || artAuthor.email || 'Unknown';
+                                const artAuthorSlug = artAuthor.slug;
+                                const artHasValidAuthor = artAuthorSlug && artAuthorName !== 'Unknown' && artAuthorName !== 'Uncategorized';
+                                
                                 return `
                                     <a href="/wiki/${art.slug}" class="block hover:bg-gray-700 p-3 rounded transition">
                                         <h4 class="font-semibold">${escapeHtml(art.title)}</h4>
                                         <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400 mt-1">
                                             <span>⏱️ ${art.readTime || calculateReadTime(art.content)} min read</span>
                                             <span>👁️ ${art.views || 0} views</span>
-                                            <div class="flex items-center gap-1">
-                                                <img src="${artAuthorAvatar}" alt="" class="w-4 h-4 rounded-full object-cover">
-                                                <span>${escapeHtml(artAuthor.name || artAuthor.email || 'Unknown')}</span>
-                                            </div>
+                                            ${artHasValidAuthor ? `
+                                                <div class="flex items-center gap-1">
+                                                    <img src="${artAuthorAvatar}" alt="" class="w-4 h-4 rounded-full object-cover">
+                                                    <a href="/profile/${artAuthorSlug}" class="hover:text-blue-400 transition">
+                                                        ${escapeHtml(artAuthorName)}
+                                                    </a>
+                                                </div>
+                                            ` : `
+                                                <div class="flex items-center gap-1">
+                                                    <img src="${artAuthorAvatar}" alt="" class="w-4 h-4 rounded-full object-cover">
+                                                    <span>${escapeHtml(artAuthorName)}</span>
+                                                </div>
+                                            `}
                                         </div>
                                     </a>
                                 `;

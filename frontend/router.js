@@ -3,6 +3,7 @@ import HomePage from './pages/home.js';
 import WikiPage from './pages/wiki.js';
 import ArticlePage from './pages/article.js';
 import LoginPage, { initLoginForm } from './pages/login.js';
+import UserProfilePage from './pages/user-profile.js';
 import RegisterPage, { initRegisterForm } from './pages/register.js';
 import ProfilePage from './pages/profile.js';
 import ArticlesListPage from './pages/admin/ArticlesList.js';
@@ -11,6 +12,7 @@ import Layout from './components/Layout.js';
 import { updateHeaderUser } from './components/Header.js';
 import { initSidebarEvents } from './components/Sidebar.js';
 import { initAvatarUpload } from './components/AvatarUpload.js';
+import UsersPage from './pages/users.js';
 
 const routes = {
     '/': HomePage,
@@ -19,9 +21,11 @@ const routes = {
     '/login': LoginPage,
     '/register': RegisterPage,
     '/profile': ProfilePage,
+    '/profile/:slug': UserProfilePage,
     '/admin/articles': ArticlesListPage,
     '/admin/articles/new': ArticleEditPage,
     '/admin/articles/:slug': ArticleEditPage,
+    '/users': UsersPage,
 };
 
 // Функции для инициализации профиля
@@ -190,6 +194,7 @@ const router = {
 
         const state = getState();
         
+        // Защита личного профиля
         if (path === '/profile' && !state.currentUser) {
             this.navigate('/login');
             return;
@@ -239,13 +244,22 @@ const router = {
                 }
             }, 50);
         } else if (path === '/profile') {
-            // Инициализируем все компоненты профиля
             setTimeout(() => {
                 console.log('Initializing profile components');
                 initAvatarUpload();
                 initProfileForms();
                 profileInitialized = true;
             }, 150);
+        } else if (path.startsWith('/profile/') && path !== '/profile') {
+            // Публичный профиль не требует инициализации форм
+            console.log('Public profile page, no forms to initialize');
+        }
+        else if (path === '/users') {
+            setTimeout(() => {
+                if (window.initUsersPage) {
+                    window.initUsersPage();
+                }
+            }, 50);
         }
         
         this.bindEvents();
