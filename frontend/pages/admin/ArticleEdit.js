@@ -32,22 +32,14 @@ export default async function ArticleEditPage(params) {
                     </div>
                 `;
             }
-            console.log('Loaded article for edit:', article);
         }
     } catch (error) {
         console.error('Error loading data:', error);
     }
     
-    // Форматируем дату для поля datetime-local
-    const formatDateForInput = (date) => {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toISOString().slice(0, 16);
-    };
-    
-    // Получаем дату публикации (если есть, иначе текущую)
-    const publishDate = article?.publishedAt || new Date();
-    const currentPublishDate = formatDateForInput(publishDate);
+    const currentStatus = article?.status || 'draft';
+    const currentAuthor = article?.author?._id || '';
+    const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
     
     return `
         <div class="max-w-6xl mx-auto">
@@ -78,6 +70,7 @@ export default async function ArticleEditPage(params) {
                                value="${escapeHtml(article?.slug || '')}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <p class="text-xs text-gray-500 mt-1">Leave empty to auto-generate from title. Example: my-awesome-article</p>
+                        ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Auto-generated from title if left empty</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Editing slug will change the article URL</p>'}
                     </div>
                 </div>
                 
@@ -93,13 +86,13 @@ export default async function ArticleEditPage(params) {
                     <label class="block text-sm font-medium mb-2">Content * (Markdown supported)</label>
                     <textarea id="content" 
                               rows="15"
-                              class="w-full px-4 py-2 bg-gray-800 rounded-lg">${escapeHtml(article?.content || '')}</textarea>
+                              class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${escapeHtml(article?.content || '')}</textarea>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium mb-2">Category *</label>
-                        <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                        <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">Select a category</option>
                             ${categories.map(cat => `
                                 <option value="${cat._id}" ${article?.category?._id === cat._id ? 'selected' : ''}>
@@ -111,10 +104,10 @@ export default async function ArticleEditPage(params) {
                     
                     <div>
                         <label class="block text-sm font-medium mb-2">Author</label>
-                        <select id="author" class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                        <select id="author" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">Select author (default: current user)</option>
                             ${users.map(user => `
-                                <option value="${user._id}" ${article?.author?._id === user._id ? 'selected' : ''}>
+                                <option value="${user._id}" ${currentAuthor === user._id ? 'selected' : ''}>
                                     ${escapeHtml(user.name)} (${escapeHtml(user.email)})
                                 </option>
                             `).join('')}
@@ -139,9 +132,9 @@ export default async function ArticleEditPage(params) {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium mb-2">Status</label>
-                        <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg">
-                            <option value="draft" ${article?.status === 'draft' ? 'selected' : ''}>📝 Draft</option>
-                            <option value="published" ${article?.status === 'published' ? 'selected' : ''}>🚀 Published</option>
+                        <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>📝 Draft</option>
+                            <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>🚀 Published</option>
                         </select>
                     </div>
                     
@@ -150,7 +143,7 @@ export default async function ArticleEditPage(params) {
                         <input type="datetime-local" 
                                id="publishDate" 
                                value="${currentPublishDate}"
-                               class="w-full px-4 py-2 bg-gray-800 rounded-lg">
+                               class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <p class="text-xs text-gray-500 mt-1">Leave as is for current date/time</p>
                     </div>
                 </div>
@@ -234,7 +227,6 @@ function createSimpleMDE(textarea, isNew = false) {
             }
             
             window.simplemdeInitialized = true;
-            console.log('SimpleMDE initialized');
         } catch(e) {
             console.error('Error initializing SimpleMDE:', e);
         }
@@ -245,8 +237,6 @@ window.initArticleEdit = async function(slug) {
     const isEdit = slug && slug !== 'new';
     const isNew = !isEdit;
     const oldSlug = isEdit ? slug : null;
-    
-    console.log('Initializing article edit, isEdit:', isEdit, 'slug:', slug);
     
     setTimeout(() => {
         initMarkdownEditor(isNew);
@@ -284,7 +274,6 @@ window.initArticleEdit = async function(slug) {
             const tagCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
             const tags = Array.from(tagCheckboxes).map(cb => cb.value);
             
-            // Валидация
             if (!title) {
                 window.toast?.warning('Please enter a title');
                 document.getElementById('title').focus();
@@ -311,7 +300,6 @@ window.initArticleEdit = async function(slug) {
                 return;
             }
             
-            // Если slug пустой, генерируем из title
             if (!formSlug) {
                 formSlug = generateSlug(title);
                 if (!formSlug) {
@@ -320,14 +308,12 @@ window.initArticleEdit = async function(slug) {
                 }
             }
             
-            // Валидация slug
             if (!isValidSlug(formSlug)) {
                 window.toast?.error('Slug can only contain lowercase letters, numbers, and hyphens');
                 document.getElementById('slug').focus();
                 return;
             }
             
-            // Если дата не указана, используем текущую
             let publishedAt = null;
             if (publishDate) {
                 publishedAt = new Date(publishDate);
@@ -335,7 +321,6 @@ window.initArticleEdit = async function(slug) {
                 publishedAt = new Date();
             }
             
-            // Предупреждение при изменении slug
             if (isEdit && oldSlug && formSlug !== oldSlug) {
                 const confirmed = await showConfirmDialog(
                     'Change Slug?',

@@ -9,7 +9,7 @@ export function escapeHtml(str) {
     });
 }
 
-// Расчет времени чтения (средняя скорость 200 слов в минуту)
+// Расчет времени чтения
 export function calculateReadTime(content) {
     if (!content) return 1;
     const text = content.replace(/<[^>]*>/g, '');
@@ -18,11 +18,9 @@ export function calculateReadTime(content) {
     return Math.max(1, minutes);
 }
 
-// Генерация slug из заголовка (транслитерация русских букв)
+// Генерация slug из заголовка
 export function generateSlug(title) {
-    if (!title || title.trim() === '') {
-        return '';
-    }
+    if (!title || title.trim() === '') return '';
     
     const translitMap = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
@@ -37,13 +35,10 @@ export function generateSlug(title) {
         result += translitMap[char] || (char.match(/[a-z0-9]/) ? char : '');
     }
     
-    return result
-        .replace(/\s+/g, '-')
-        .replace(/--+/g, '-')
-        .replace(/^-+|-+$/g, '');
+    return result.replace(/\s+/g, '-').replace(/--+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-// Валидация slug (только буквы, цифры и тире)
+// Валидация slug
 export function isValidSlug(slug) {
     return /^[a-z0-9-]+$/.test(slug);
 }
@@ -74,7 +69,7 @@ export function debounce(func, delay) {
     };
 }
 
-// Получение статуса статьи на русском
+// Статусы статей
 export function getStatusText(status) {
     switch (status) {
         case 'published': return 'Опубликовано';
@@ -83,7 +78,6 @@ export function getStatusText(status) {
     }
 }
 
-// Получение цвета статуса для бейджа
 export function getStatusColor(status) {
     switch (status) {
         case 'published': return 'bg-green-900 text-green-300';
@@ -92,7 +86,6 @@ export function getStatusColor(status) {
     }
 }
 
-// Получение иконки статуса
 export function getStatusIcon(status) {
     switch (status) {
         case 'published': return '🚀';

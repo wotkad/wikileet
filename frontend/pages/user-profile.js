@@ -22,7 +22,6 @@ export default async function UserProfilePage(params) {
             `;
         }
         
-        // Получаем статьи пользователя
         let articles = [];
         try {
             const articlesData = await getUserArticles(user._id);
@@ -31,14 +30,10 @@ export default async function UserProfilePage(params) {
             console.error('Error loading articles:', error);
         }
         
-        // Фильтруем только опубликованные статьи для публичного просмотра
         const publishedArticles = articles.filter(a => a.status === 'published');
-        
         const registeredDate = formatDate(user.createdAt);
-        
         const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
         
-        // Определяем отображение роли
         const roleDisplay = user.role === 'admin' ? '👑 Administrator' : '📖 Member';
         const roleBadgeClass = user.role === 'admin' ? 'bg-purple-900 text-purple-300' : 'bg-blue-800 text-blue-300';
         
@@ -66,7 +61,6 @@ export default async function UserProfilePage(params) {
                     </div>
                 </div>
                 
-                <!-- Stats Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div class="bg-gray-800 rounded-lg p-6 text-center">
                         <div class="text-3xl font-bold text-blue-400">${publishedArticles.length}</div>
@@ -86,7 +80,6 @@ export default async function UserProfilePage(params) {
                     </div>
                 </div>
                 
-                <!-- Articles List -->
                 <div class="bg-gray-800 rounded-lg p-6">
                     <h2 class="text-2xl font-bold mb-4">📝 Articles by ${escapeHtml(user.name)}</h2>
                     <div class="space-y-4">

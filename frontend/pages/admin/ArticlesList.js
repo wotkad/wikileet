@@ -1,23 +1,20 @@
 import { getArticles, deleteArticle } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml, formatDate } from '../../utils/utils.js';
+import { escapeHtml, formatDate, getStatusText, getStatusColor, getStatusIcon } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let currentPage = 1;
 let currentData = null;
-let currentStatusFilter = 'all'; // По умолчанию 'all'
+let currentStatusFilter = 'all';
 
 export default async function ArticlesListPage() {
     const params = { page: currentPage, limit: 20 };
     
-    // Отправляем status=all для получения всех статей (админ)
     if (currentStatusFilter !== 'all') {
         params.status = currentStatusFilter;
     } else {
         params.status = 'all';
     }
-    
-    console.log('Fetching articles with params:', params);
     
     currentData = await getArticles(params);
     
@@ -67,8 +64,9 @@ function renderArticlesList(articles) {
                     <div class="flex flex-wrap gap-2 text-xs">
                         <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
                         <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt).toLocaleDateString()}</span>
-                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${formatDate(article.publishedAt).toLocaleDateString()}</span>` : ''}
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${article.readTime || 1} min read</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt)}</span>
+                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${formatDate(article.publishedAt)}</span>` : ''}
                     </div>
                 </div>
                 <div class="flex gap-2 ml-4">
@@ -87,11 +85,9 @@ function renderArticlesList(articles) {
 }
 
 function renderStatusBadge(status) {
-    if (status === 'published') {
-        return '<span class="px-2 py-0.5 bg-green-900 text-green-300 rounded-full text-xs font-medium">🚀 Published</span>';
-    } else {
-        return '<span class="px-2 py-0.5 bg-yellow-900 text-yellow-300 rounded-full text-xs font-medium">📝 Draft</span>';
-    }
+    return `<span class="px-2 py-0.5 ${getStatusColor(status)} rounded-full text-xs font-medium">
+        ${getStatusIcon(status)} ${getStatusText(status)}
+    </span>`;
 }
 
 function renderPagination(data) {
@@ -116,8 +112,6 @@ async function refreshArticlesList() {
         } else {
             params.status = 'all';
         }
-        
-        console.log('Refreshing articles list with filter:', currentStatusFilter, 'params:', params);
         
         currentData = await getArticles(params);
         
@@ -223,7 +217,6 @@ async function attachFilterEvents() {
         
         newFilter.addEventListener('change', async (e) => {
             const newValue = e.target.value;
-            console.log('Filter changed to:', newValue);
             currentStatusFilter = newValue;
             currentPage = 1;
             await refreshArticlesList();
@@ -232,7 +225,6 @@ async function attachFilterEvents() {
 }
 
 window.initArticlesList = function() {
-    console.log('Initializing articles list, current filter:', currentStatusFilter);
     attachDeleteEvents();
     attachPaginationEvents();
     attachFilterEvents();

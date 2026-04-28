@@ -23,7 +23,6 @@ export default async function ProfilePage() {
     }
     
     const registeredDate = formatDate(user.createdAt);
-    
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
     
     return `

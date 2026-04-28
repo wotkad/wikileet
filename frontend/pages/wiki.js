@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils/utils.js';
+import { escapeHtml, debounce } from '../utils/utils.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 
@@ -10,8 +10,19 @@ let currentFilters = {
     page: 1,
 };
 
-let searchDebounceTimer = null;
 let selectedTagSlugs = new Set();
+
+// Создаем debounced функцию поиска
+const performSearch = debounce((searchValue) => {
+    const params = new URLSearchParams(window.location.search);
+    if (searchValue && searchValue.trim()) {
+        params.set('search', searchValue.trim());
+    } else {
+        params.delete('search');
+    }
+    params.set('page', '1');
+    window.router.navigate(`/wiki?${params.toString()}`);
+}, 500);
 
 export default async function WikiPage() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -26,8 +37,6 @@ export default async function WikiPage() {
         sort: urlParams.get('sort') || '-createdAt',
         page: parseInt(urlParams.get('page')) || 1,
     };
-    
-    console.log('WikiPage filters:', currentFilters);
     
     const [data, categories, tags] = await Promise.all([
         getArticles(currentFilters),
@@ -66,7 +75,7 @@ export default async function WikiPage() {
                 <div class="flex flex-wrap gap-2" id="tags-filter">
                     ${tags.map(tag => `
                         <button data-tag="${tag.slug}" 
-                                class="tag-filter-btn px-3 py-1 rounded-full text-sm transition ${currentFilters.tagSlugs.includes(tag.slug) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
+                                class="tag-filter-btn px-3 px-3 py-1 rounded-full text-sm transition ${currentFilters.tagSlugs.includes(tag.slug) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
                             ${escapeHtml(tag.name)}
                         </button>
                     `).join('')}
@@ -163,27 +172,7 @@ function applyTagFilters() {
     window.router.navigate(`/wiki?${params.toString()}`);
 }
 
-function performSearch(searchValue) {
-    if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
-    }
-    
-    searchDebounceTimer = setTimeout(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (searchValue && searchValue.trim()) {
-            params.set('search', searchValue.trim());
-        } else {
-            params.delete('search');
-        }
-        params.set('page', '1');
-        window.router.navigate(`/wiki?${params.toString()}`);
-        searchDebounceTimer = null;
-    }, 500);
-}
-
 window.initWikiEvents = function() {
-    console.log('Initializing wiki events');
-    
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         const currentValue = searchInput.value;
@@ -199,18 +188,7 @@ window.initWikiEvents = function() {
         newSearchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                if (searchDebounceTimer) {
-                    clearTimeout(searchDebounceTimer);
-                    searchDebounceTimer = null;
-                }
-                const params = new URLSearchParams(window.location.search);
-                if (e.target.value && e.target.value.trim()) {
-                    params.set('search', e.target.value.trim());
-                } else {
-                    params.delete('search');
-                }
-                params.set('page', '1');
-                window.router.navigate(`/wiki?${params.toString()}`);
+                performSearch(e.target.value);
             }
         });
         

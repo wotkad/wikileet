@@ -1,4 +1,4 @@
-import { escapeHtml, calculateReadTime } from '../utils/utils.js';
+import { escapeHtml, calculateReadTime, truncateText } from '../utils/utils.js';
 
 export default function ArticleCard(article) {
     const readTime = article.readTime || calculateReadTime(article.content);
@@ -13,7 +13,7 @@ export default function ArticleCard(article) {
         <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
             <a href="/wiki/${article.slug}" class="block">
                 <h3 class="text-lg font-semibold mb-2">${escapeHtml(article.title)}</h3>
-                <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
+                <p class="text-gray-400 text-sm mb-3">${truncateText(escapeHtml(article.description || 'No description'), 120)}</p>
             </a>
             <div class="flex flex-wrap items-center gap-2 text-xs">
                 <a href="/wiki?category=${article.category?.slug}" class="px-2 py-1 bg-blue-900 text-blue-300 rounded hover:bg-blue-800 transition">
