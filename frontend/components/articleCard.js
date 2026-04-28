@@ -7,8 +7,7 @@ export default function ArticleCard(article) {
     const authorName = author.name || author.email || 'Unknown';
     const authorSlug = author.slug;
     
-    // Проверяем, есть ли у автора slug и имя не Unknown
-    const hasValidAuthor = authorSlug && authorName !== 'Unknown' && authorName !== 'Uncategorized';
+    const hasValidAuthor = authorSlug && authorName !== 'Unknown';
     
     return `
         <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">

@@ -1,6 +1,6 @@
 import { getArticles, deleteArticle } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml, formatDate } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let currentPage = 1;
@@ -67,8 +67,8 @@ function renderArticlesList(articles) {
                     <div class="flex flex-wrap gap-2 text-xs">
                         <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
                         <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
-                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${new Date(article.publishedAt).toLocaleDateString()}</span>` : ''}
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt).toLocaleDateString()}</span>
+                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${formatDate(article.publishedAt).toLocaleDateString()}</span>` : ''}
                     </div>
                 </div>
                 <div class="flex gap-2 ml-4">

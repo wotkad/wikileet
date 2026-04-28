@@ -1,5 +1,6 @@
 import { getUserBySlug, getUserArticles } from '../api.js';
-import { escapeHtml } from '../utils/utils.js';
+import { escapeHtml, formatDate } from '../utils/utils.js';
+import ArticleCard from '../components/ArticleCard.js';
 
 export default async function UserProfilePage(params) {
     const slug = params.slug;
@@ -10,7 +11,6 @@ export default async function UserProfilePage(params) {
     }
     
     try {
-        // Получаем данные пользователя по slug
         const user = await getUserBySlug(slug);
         
         if (!user) {
@@ -34,11 +34,7 @@ export default async function UserProfilePage(params) {
         // Фильтруем только опубликованные статьи для публичного просмотра
         const publishedArticles = articles.filter(a => a.status === 'published');
         
-        const registeredDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('ru-RU', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }) : 'Unknown';
+        const registeredDate = formatDate(user.createdAt);
         
         const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
         
@@ -93,39 +89,19 @@ export default async function UserProfilePage(params) {
                 <!-- Articles List -->
                 <div class="bg-gray-800 rounded-lg p-6">
                     <h2 class="text-2xl font-bold mb-4">📝 Articles by ${escapeHtml(user.name)}</h2>
-                    ${publishedArticles.length > 0 ? `
-                        <div class="space-y-4">
-                            ${publishedArticles.slice(0, 10).map(article => `
-                                <div class="border-b border-gray-700 pb-4 last:border-0">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <a href="/wiki/${article.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
-                                                ${escapeHtml(article.title)}
-                                            </a>
-                                            <p class="text-gray-400 text-sm mt-1">${escapeHtml(article.description || 'No description')}</p>
-                                            <div class="flex flex-wrap gap-2 mt-2 text-xs">
-                                                <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
-                                                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                                                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${article.readTime || 1} min read</span>
-                                                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
+                    <div class="space-y-4">
+                        ${publishedArticles.length > 0 ? 
+                            publishedArticles.map(article => ArticleCard(article)).join('') : 
+                            '<div class="text-center py-8 text-gray-400">No articles published yet</div>'
+                        }
+                    </div>
+                    ${publishedArticles.length > 10 ? `
+                        <div class="text-center mt-4">
+                            <a href="/wiki?author=${user._id}" class="text-blue-400 hover:text-blue-300 transition">
+                                View all ${publishedArticles.length} articles →
+                            </a>
                         </div>
-                        ${publishedArticles.length > 10 ? `
-                            <div class="text-center mt-4">
-                                <a href="/wiki?author=${user._id}" class="text-blue-400 hover:text-blue-300 transition">
-                                    View all ${publishedArticles.length} articles →
-                                </a>
-                            </div>
-                        ` : ''}
-                    ` : `
-                        <div class="text-center py-8 text-gray-400">
-                            <p>${escapeHtml(user.name)} hasn't published any articles yet.</p>
-                        </div>
-                    `}
+                    ` : ''}
                 </div>
             </div>
         `;

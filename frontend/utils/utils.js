@@ -12,48 +12,35 @@ export function escapeHtml(str) {
 // Расчет времени чтения (средняя скорость 200 слов в минуту)
 export function calculateReadTime(content) {
     if (!content) return 1;
-    // Удаляем HTML теги
     const text = content.replace(/<[^>]*>/g, '');
-    // Считаем слова (разделяем по пробелам)
     const words = text.trim().split(/\s+/).length;
-    // Рассчитываем минуты
     const minutes = Math.ceil(words / 200);
-    // Минимум 1 минута
     return Math.max(1, minutes);
 }
 
-// Генерация slug из заголовка
+// Генерация slug из заголовка (транслитерация русских букв)
 export function generateSlug(title) {
     if (!title || title.trim() === '') {
         return '';
     }
     
-    return title
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')      // Удаляем спецсимволы
-        .replace(/\s+/g, '-')           // Заменяем пробелы на тире
-        .replace(/--+/g, '-')           // Заменяем несколько тире на одно
-        .replace(/^-+|-+$/g, '');       // Удаляем тире в начале и конце
-}
-
-// Форматирование даты
-export function formatDate(date, locale = 'ru-RU', options = {}) {
-    if (!date) return 'Unknown';
-    
-    const defaultOptions = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+    const translitMap = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
     };
     
-    return new Date(date).toLocaleDateString(locale, { ...defaultOptions, ...options });
-}
-
-// Обрезка текста до определенной длины
-export function truncateText(text, maxLength = 100) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + '...';
+    let result = '';
+    for (let char of title.toLowerCase()) {
+        result += translitMap[char] || (char.match(/[a-z0-9]/) ? char : '');
+    }
+    
+    return result
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/^-+|-+$/g, '');
 }
 
 // Валидация slug (только буквы, цифры и тире)
@@ -61,7 +48,24 @@ export function isValidSlug(slug) {
     return /^[a-z0-9-]+$/.test(slug);
 }
 
-// Дебаунс функция (для поиска)
+// Форматирование даты
+export function formatDate(date) {
+    if (!date) return 'Unknown';
+    return new Date(date).toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Обрезка текста
+export function truncateText(text, maxLength = 100) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + '...';
+}
+
+// Дебаунс функция
 export function debounce(func, delay) {
     let timeoutId;
     return function(...args) {
