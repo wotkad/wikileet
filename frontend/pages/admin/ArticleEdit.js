@@ -1,6 +1,6 @@
 import { getArticle, createArticle, updateArticle, getCategories, getTags, getUsers } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
-import { escapeHtml, generateSlug, isValidSlug } from '../../utils/utils.js';
+import { escapeHtml, generateSlug, isValidSlug, formatDate } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let simplemde = null;
@@ -39,7 +39,7 @@ export default async function ArticleEditPage(params) {
     
     const currentStatus = article?.status || 'draft';
     const currentAuthor = article?.author?._id || '';
-    const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
+    const currentPublishDate = article?.publishedAt ? formatDate(article.publishedAt) : '';
     
     return `
         <div class="mx-auto">
@@ -316,9 +316,9 @@ window.initArticleEdit = async function(slug) {
             
             let publishedAt = null;
             if (publishDate) {
-                publishedAt = new Date(publishDate);
+                publishedAt = formatDate(publishDate);
             } else if (status === 'published') {
-                publishedAt = new Date();
+                publishedAt = formatDate;
             }
             
             if (isEdit && oldSlug && formSlug !== oldSlug) {

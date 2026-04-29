@@ -1,4 +1,4 @@
-import { escapeHtml, debounce } from '../utils/utils.js';
+import { escapeHtml, debounce, formatDate } from '../utils/utils.js';
 
 let currentFilters = {
     search: '',
@@ -73,7 +73,7 @@ function renderUsersList(users) {
                     </div>
                     <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
                     <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                        <span>📅 Joined: ${new Date(user.createdAt).toLocaleDateString()}</span>
+                        <span>📅 Joined: ${formatDate(user.createdAt)}</span>
                         <span>📝 ${user.articlesCount || 0} articles</span>
                         <span>👁️ ${user.totalViews || 0} total views</span>
                     </div>

@@ -51,37 +51,56 @@ function renderArticlesList(articles) {
     if (!articles || articles.length === 0) {
         return '<div class="text-gray-400 text-center py-8">No articles yet. Create your first article!</div>';
     }
-    
-    return articles.map(article => `
-        <div class="bg-gray-800 rounded-lg p-4" data-article-id="${article._id}" data-article-title="${escapeHtml(article.title)}">
-            <div class="flex justify-between items-start">
-                <div class="flex-1">
-                    <div class="flex items-center gap-3 mb-2">
-                        <h3 class="text-lg font-semibold">${escapeHtml(article.title)}</h3>
-                        ${renderStatusBadge(article.status)}
+
+    return articles.map(article => {
+        const author = article.author || {};
+        const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : '/api/profile/avatar/default-avatar.png';
+        const authorName = author.name || author.email || 'Unknown';
+        const authorSlug = author.slug;
+        const hasValidAuthor = authorSlug && authorName !== 'Unknown';
+        
+        return `
+            <div class="bg-gray-800 rounded-lg p-4" data-article-id="${article._id}" data-article-title="${escapeHtml(article.title)}">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-lg font-semibold">${escapeHtml(article.title)}</h3>
+                            ${renderStatusBadge(article.status)}
+                        </div>
+                        <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
+                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
+                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${article.readTime || 1} min read</span>
+                            ${hasValidAuthor ? `
+                                <a href="/profile/${authorSlug}" class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 transition">
+                                    <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">
+                                    <span>${escapeHtml(authorName)}</span>
+                                </a>
+                            ` : `
+                                <div class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded">
+                                    <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">
+                                    <span>${escapeHtml(authorName)}</span>
+                                </div>
+                            `}
+                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt)}</span>
+                            ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${formatDate(article.publishedAt)}</span>` : ''}
+                        </div>
                     </div>
-                    <p class="text-gray-400 text-sm mb-3">${escapeHtml(article.description || 'No description')}</p>
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        <span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">${escapeHtml(article.category?.name || 'Uncategorized')}</span>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${article.readTime || 1} min read</span>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt)}</span>
-                        ${article.publishedAt ? `<span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📢 ${formatDate(article.publishedAt)}</span>` : ''}
+                    <div class="flex gap-2 ml-4">
+                        <a href="/admin/articles/${article.slug}" 
+                           class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition">
+                            Edit
+                        </a>
+                        <button data-id="${article._id}" data-slug="${article.slug}" data-title="${escapeHtml(article.title)}" 
+                                class="delete-btn px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition">
+                            Delete
+                        </button>
                     </div>
-                </div>
-                <div class="flex gap-2 ml-4">
-                    <a href="/admin/articles/${article.slug}" 
-                       class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition">
-                        Edit
-                    </a>
-                    <button data-id="${article._id}" data-slug="${article.slug}" data-title="${escapeHtml(article.title)}" 
-                            class="delete-btn px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition">
-                        Delete
-                    </button>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function renderStatusBadge(status) {
@@ -144,7 +163,7 @@ function updatePagination() {
     } else if (existingPagination && currentData.totalPages <= 1) {
         existingPagination.remove();
     } else if (!existingPagination && currentData.totalPages > 1) {
-        const container = document.querySelector('.max-w-6xl.mx-auto');
+        const container = document.querySelector('.mx-auto');
         if (container) {
             container.insertAdjacentHTML('beforeend', renderPagination(currentData));
             attachPaginationEvents();
