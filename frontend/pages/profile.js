@@ -26,7 +26,7 @@ export default async function ProfilePage() {
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
     
     return `
-        <div class="max-w-4xl mx-auto">
+        <div class="mx-auto">
             <div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg p-8 mb-8">
                 <div class="flex items-center gap-6">
                     <div class="flex flex-col items-center space-y-4" id="avatar-upload-component">

@@ -42,7 +42,7 @@ export default async function ArticleEditPage(params) {
     const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
     
     return `
-        <div class="max-w-6xl mx-auto">
+        <div class="mx-auto">
             <div class="mb-6">
                 <h1 class="text-3xl font-bold">${isEdit ? 'Edit Article' : 'Create New Article'}</h1>
                 <p class="text-gray-400 mt-1">Fill in the form below to ${isEdit ? 'update' : 'create'} an article</p>

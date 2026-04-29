@@ -19,7 +19,7 @@ export default async function ArticlesListPage() {
     currentData = await getArticles(params);
     
     return `
-        <div class="max-w-6xl mx-auto">
+        <div class="mx-auto">
             <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h1 class="text-3xl font-bold">Manage Articles</h1>

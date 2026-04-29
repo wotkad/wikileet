@@ -22,7 +22,7 @@ export default async function HomePage() {
     const popularArticles = await getArticles({ sort: '-views', limit: 6 });
 
     return `
-        <div class="max-w-6xl mx-auto space-y-8">
+        <div class="mx-auto space-y-8">
             <div class="text-center space-y-4">
                 <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                     Knowledge Base Platform
@@ -34,36 +34,6 @@ export default async function HomePage() {
                     <a href="/wiki" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition inline-block">
                         Browse Knowledge Base →
                     </a>
-                </div>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8">
-                <div>
-                    <h2 class="text-2xl font-bold mb-4">📚 Categories</h2>
-                    <div class="space-y-2">
-                        ${categories && categories.length > 0 ? 
-                            categories.map(cat => `
-                                <a href="/wiki?category=${cat.slug}" class="block bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition">
-                                    <span class="font-semibold">${escapeHtml(cat.name)}</span>
-                                </a>
-                            `).join('') : 
-                            '<div class="text-gray-400 text-center py-4">No categories yet</div>'
-                        }
-                    </div>
-                </div>
-
-                <div>
-                    <h2 class="text-2xl font-bold mb-4">🏷️ Popular Tags</h2>
-                    <div class="flex flex-wrap gap-2">
-                        ${tags && tags.length > 0 ? 
-                            tags.map(tag => `
-                                <a href="/wiki?tags=${tag.slug}" class="px-3 py-1 bg-gray-800 rounded-full text-sm hover:bg-gray-700 transition inline-block">
-                                    ${escapeHtml(tag.name)}
-                                </a>
-                            `).join('') : 
-                            '<div class="text-gray-400 text-center py-4">No tags yet</div>'
-                        }
-                    </div>
                 </div>
             </div>
 

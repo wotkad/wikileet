@@ -38,7 +38,7 @@ export default async function UserProfilePage(params) {
         const roleBadgeClass = user.role === 'admin' ? 'bg-purple-900 text-purple-300' : 'bg-blue-800 text-blue-300';
         
         return `
-            <div class="max-w-4xl mx-auto">
+            <div class="mx-auto">
                 <div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg p-8 mb-8">
                     <div class="flex items-center gap-6">
                         <div class="flex flex-col items-center space-y-4">
