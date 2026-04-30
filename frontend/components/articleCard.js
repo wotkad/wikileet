@@ -46,7 +46,7 @@ export default function ArticleCard(article) {
                         <span>${escapeHtml(authorName)}</span>
                     </div>
                 `}
-                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${new Date(article.createdAt).toLocaleDateString()}</span>
+                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">📅 ${formatDate(article.createdAt)}</span>
             </div>
         </div>
     `;

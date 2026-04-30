@@ -1,4 +1,4 @@
-import { escapeHtml, calculateReadTime } from '../utils/utils.js';
+import { escapeHtml, calculateReadTime, formatDate } from '../utils/utils.js';
 import { getArticle } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { PAGINATION } from '../constants.js';
@@ -44,7 +44,7 @@ export default async function ArticlePage(params) {
                     </div>
                     
                     <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
-                        <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
+                        <div>📅 ${formatDate(article.createdAt)}</div>
                         <div>⏱️ ${readTime} min read</div>
                         <div>👁️ ${article.views} views</div>
                         <div class="flex items-center gap-2">
