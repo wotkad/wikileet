@@ -17,7 +17,7 @@ export default function Header() {
                         📚 Knowledge Base
                     </a>
                 </div>
-                <div class="flex items-center" id="header-user-section">
+                <div class="flex items-center gap-x-2" id="header-user-section">
                     ${renderUserSection(state.currentUser)}
                 </div>
             </div>

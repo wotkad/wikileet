@@ -37,7 +37,21 @@ export default async function HomePage() {
                 </div>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-2xl font-bold mb-4">📚 Разделы</h2>
+                <div class="flex flex-wrap gap-2">
+                    ${categories && categories.length > 0 ? 
+                        categories.map(cat => `
+                            <a href="/wiki?category=${cat.slug}" class="block bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition">
+                                <span class="font-semibold">${escapeHtml(cat.name)}</span>
+                            </a>
+                        `).join('') : 
+                        '<div class="text-gray-400 text-center py-4">No categories yet</div>'
+                    }
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🆕 Recent Updates</h2>
                     <div class="space-y-4">
