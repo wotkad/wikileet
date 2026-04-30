@@ -174,7 +174,7 @@ export default async function UsersPage() {
     ]);
     
     return `
-        <div class="max-w-6xl mx-auto">
+        <div class="mx-auto">
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">👥 Пользователи</h1>
                 <p class="text-gray-400">${stats.totalUsers || 0} пользователей</p>

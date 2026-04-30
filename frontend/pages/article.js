@@ -24,7 +24,7 @@ export default async function ArticlePage(params) {
         const similarArticles = (similar || []).slice(0, PAGINATION.SIMILAR_ARTICLES_LIMIT);
         
         return `
-            <article class="max-w-4xl mx-auto">
+            <article class="mx-auto">
                 <a href="/wiki" class="inline-block mb-4 text-blue-400 hover:text-blue-300 transition">
                     ← Back to articles
                 </a>

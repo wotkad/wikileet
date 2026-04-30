@@ -123,7 +123,7 @@ export default async function WikiPage() {
     }
 
     return `
-        <div class="max-w-4xl mx-auto">
+        <div class="mx-auto">
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">Все записи</h1>
                 ${renderFiltersInfo(selectedCategoryName, currentFilters.tagSlugs, tagMap)}
