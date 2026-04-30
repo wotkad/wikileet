@@ -3,7 +3,7 @@ import { getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION } from '../constants.js';
+import { PAGINATION, UPLOAD, USER_ROLES } from '../constants.js';
 
 let currentPage = 1;
 let currentUser = null;
@@ -24,7 +24,7 @@ function renderProfilePage(user, allArticles) {
     if (!container) return;
     
     const registeredDate = formatDate(user.createdAt);
-    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : UPLOAD.DEFAULT_AVATAR;
     
     container.innerHTML = `
         <div class="mx-auto">
@@ -52,22 +52,21 @@ function renderProfilePage(user, allArticles) {
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
-                                ${user.role === 'admin' ? '👑 Administrator' : 'User'}
+                                ${user.role === 'admin' ? USER_ROLES.ADMIN : USER_ROLES.USER}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
-                                📅 Registered: ${registeredDate}
+                                📅 Зарегистрирован: ${registeredDate}
                             </span>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Edit Profile Form -->
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-2xl font-bold mb-4">✏️ Edit Profile</h2>
+                <h2 class="text-2xl font-bold mb-4">✏️ Редактировать профиль</h2>
                 <form id="editProfileForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Name</label>
+                        <label class="block text-sm font-medium mb-2">Имя</label>
                         <input type="text" id="edit-name" value="${escapeHtml(user.name)}" required
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -82,22 +81,21 @@ function renderProfilePage(user, allArticles) {
                 </form>
             </div>
             
-            <!-- Change Password Form -->
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-2xl font-bold mb-4">🔒 Change Password</h2>
+                <h2 class="text-2xl font-bold mb-4">🔒 Изменить пароль</h2>
                 <form id="changePasswordForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Current Password</label>
+                        <label class="block text-sm font-medium mb-2">Текущий пароль</label>
                         <input type="password" id="current-password" required
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">New Password</label>
+                        <label class="block text-sm font-medium mb-2">Новый пароль</label>
                         <input type="password" id="new-password" required minlength="6"
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Confirm New Password</label>
+                        <label class="block text-sm font-medium mb-2">Подтвердите новый пароль</label>
                         <input type="password" id="confirm-password" required minlength="6"
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -107,40 +105,38 @@ function renderProfilePage(user, allArticles) {
                 </form>
             </div>
             
-            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-blue-400">${allArticles.length}</div>
-                    <div class="text-gray-400 mt-1">Articles Written</div>
+                    <div class="text-gray-400 mt-1">Всего записей</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-green-400">
                         ${allArticles.filter(a => a.status === 'published').length}
                     </div>
-                    <div class="text-gray-400 mt-1">Published Articles</div>
+                    <div class="text-gray-400 mt-1">Опубликованные записи</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-yellow-400">
                         ${allArticles.filter(a => a.status === 'draft').length}
                     </div>
-                    <div class="text-gray-400 mt-1">Drafts</div>
+                    <div class="text-gray-400 mt-1">Черновики</div>
                 </div>
             </div>
             
-            <!-- Recent Articles -->
             <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-2xl font-bold mb-4">📝 Recent Articles</h2>
+                <h2 class="text-2xl font-bold mb-4">📝 Последние записи</h2>
                 <div class="space-y-4">
                     ${paginatedArticles.length > 0 ? 
                         paginatedArticles.map(article => ArticleCard(article)).join('') : 
-                        '<div class="text-center py-8 text-gray-400">No articles yet. Create your first article!</div>'
+                        '<div class="text-center py-8 text-gray-400">Нет записей</div>'
                     }
                 </div>
                 ${renderPagination(currentPage, totalPages)}
                 ${allArticles.length > PAGINATION.PROFILE_ARTICLES_LIMIT ? `
                     <div class="text-center mt-4">
                         <a href="/admin/articles" class="text-blue-400 hover:text-blue-300 transition">
-                            View all ${allArticles.length} articles →
+                            Посмотреть все ${allArticles.length} записи →
                         </a>
                     </div>
                 ` : ''}

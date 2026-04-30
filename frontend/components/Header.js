@@ -1,4 +1,5 @@
 import { getState } from '../state.js';
+import { UPLOAD } from '../constants.js';
 import { escapeHtml } from '../utils/utils.js';
 
 export default function Header() {
@@ -29,15 +30,15 @@ function renderUserSection(user) {
     if (!user) {
         return `
             <a href="/login" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition text-sm">
-                Login
+                Войти
             </a>
             <a href="/register" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">
-                Register
+                Зарегестироваться
             </a>
         `;
     }
     
-    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}` : '/api/profile/avatar/default-avatar.png';
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}` : UPLOAD.DEFAULT_AVATAR;
     
     return `
         <div class="relative group">
@@ -51,16 +52,16 @@ function renderUserSection(user) {
             <div class="absolute pt-2 right-0 w-48 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden group-hover:block z-50">
                 <div class="mt-2">
                     <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
-                        👤 My Profile
+                        👤 Профиль
                     </a>
                     ${user.role === 'admin' ? `
                         <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
-                            ⚙️ Admin Panel
+                            ⚙️ Админ панель
                         </a>
                     ` : ''}
                     <hr class="border-gray-700">
                     <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm text-red-400">
-                        🚪 Logout
+                        🚪 Выйти
                     </button>
                 </div>
             </div>

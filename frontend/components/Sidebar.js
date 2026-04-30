@@ -3,6 +3,8 @@ import { getState } from '../state.js';
 
 export default function Sidebar() {
     const state = getState();
+    const user = state.currentUser;
+    const isAdmin = user?.role === 'admin';
     
     return `
         <aside class="sidebar w-64 bg-gray-800 border-r border-gray-700 fixed lg:relative lg:translate-x-0 transform -translate-x-full transition-transform duration-200 ease-in-out z-40 h-full overflow-y-auto" id="sidebar">
@@ -11,16 +13,18 @@ export default function Sidebar() {
                     <div class="space-y-2">
                         <a href="/" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
                             <span>🏠</span>
-                            <span>Home</span>
+                            <span>Главная</span>
                         </a>
                         <a href="/wiki" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
                             <span>📚</span>
-                            <span>Articles</span>
+                            <span>Записи</span>
                         </a>
-                        <a href="/users" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
-                            <span>👥</span>
-                            <span>Community</span>
-                        </a>
+                        ${isAdmin ? `
+                            <a href="/users" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                                <span>👥</span>
+                                <span>Пользователи</span>
+                            </a>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -34,7 +38,6 @@ export function initSidebarEvents() {
     const sidebar = document.getElementById('sidebar');
     
     if (toggleBtn && sidebar) {
-        // Убираем старый обработчик
         const newToggleBtn = toggleBtn.cloneNode(true);
         toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
         
@@ -44,9 +47,7 @@ export function initSidebarEvents() {
     }
 }
 
-// Инициализируем при загрузке
 if (typeof window !== 'undefined') {
-    // Ждем полной загрузки DOM
     document.addEventListener('DOMContentLoaded', () => {
         initSidebarEvents();
     });

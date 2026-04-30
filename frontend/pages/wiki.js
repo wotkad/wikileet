@@ -15,20 +15,80 @@ let currentFilters = {
 
 let selectedTagSlugs = new Set();
 
-const performSearch = debounce((searchValue) => {
-    const params = new URLSearchParams(window.location.search);
-    if (searchValue && searchValue.trim()) {
-        params.set('search', searchValue.trim());
-    } else {
-        params.delete('search');
+// Функция для обновления только контента (статьи, пагинация, счетчик)
+async function updateWikiContent() {
+    const [data, tags] = await Promise.all([
+        getArticles(currentFilters),
+        getTags()
+    ]);
+    
+    // Обновляем счетчик найденных записей
+    const countElement = document.querySelector('.articles-count');
+    if (countElement) {
+        countElement.textContent = `${data.total || 0} записей найдено`;
     }
-    params.set('page', '1');
-    window.router.navigate(`/wiki?${params.toString()}`);
+    
+    // Обновляем список статей
+    const articlesList = document.getElementById('articles-list');
+    if (articlesList) {
+        articlesList.innerHTML = data.articles && data.articles.length > 0 ? 
+            data.articles.map(article => ArticleCard(article)).join('') : 
+            '<div class="text-gray-400 text-center py-8">Записей не найдено</div>';
+    }
+    
+    // Обновляем пагинацию
+    const paginationContainer = document.querySelector('.pagination-container');
+    if (paginationContainer) {
+        const newPagination = renderPagination(currentFilters.page, data.totalPages);
+        if (newPagination) {
+            paginationContainer.innerHTML = newPagination;
+            attachPaginationEvents(onPageChange);
+        } else if (paginationContainer.parentNode) {
+            paginationContainer.innerHTML = '';
+        }
+    }
+}
+
+const performSearch = debounce(async (searchValue) => {
+    // Обновляем фильтры
+    currentFilters.search = searchValue;
+    currentFilters.page = 1;
+    
+    // Обновляем URL без перезагрузки страницы
+    const url = new URL(window.location.href);
+    if (searchValue && searchValue.trim()) {
+        url.searchParams.set('search', searchValue.trim());
+    } else {
+        url.searchParams.delete('search');
+    }
+    url.searchParams.delete('page');
+    window.history.pushState({}, '', url);
+    
+    // Обновляем контент
+    await updateWikiContent();
 }, SEARCH.DEBOUNCE_DELAY);
 
 function onPageChange(page) {
+    currentFilters.page = page;
+    
+    // Обновляем URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', page);
+    window.history.pushState({}, '', url);
+    
+    // Обновляем контент
+    updateWikiContent();
+}
+
+function applyTagFilters() {
     const params = new URLSearchParams(window.location.search);
-    params.set('page', page);
+    const tagsArray = Array.from(selectedTagSlugs);
+    if (tagsArray.length > 0) {
+        params.set('tags', tagsArray.join(','));
+    } else {
+        params.delete('tags');
+    }
+    params.set('page', '1');
     window.router.navigate(`/wiki?${params.toString()}`);
 }
 
@@ -44,7 +104,7 @@ export default async function WikiPage() {
         tagSlugs: tagsFromUrl,
         sort: urlParams.get('sort') || '-createdAt',
         page: parseInt(urlParams.get('page')) || 1,
-        limit: 10
+        limit: PAGINATION.WIKI_LIMIT
     };
     
     const [data, categories, tags] = await Promise.all([
@@ -65,22 +125,22 @@ export default async function WikiPage() {
     return `
         <div class="max-w-4xl mx-auto">
             <div class="mb-6">
-                <h1 class="text-3xl font-bold mb-2">All Articles</h1>
+                <h1 class="text-3xl font-bold mb-2">Все записи</h1>
                 ${renderFiltersInfo(selectedCategoryName, currentFilters.tagSlugs, tagMap)}
-                <p class="text-gray-400 mt-2">${data.total || 0} articles found</p>
+                <p class="text-gray-400 mt-2 articles-count">${data.total || 0} записей найдено</p>
             </div>
             
             <div class="mb-6">
                 <input type="text" 
                        id="searchInput" 
-                       placeholder="Search by title or description..." 
+                       placeholder="Введите название или описание" 
                        autocomplete="off"
                        class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                        value="${escapeHtml(currentFilters.search)}">
             </div>
             
             <div class="mb-6 bg-gray-800 rounded-lg p-4">
-                <h3 class="text-sm font-semibold mb-2 text-gray-300">Filter by tags:</h3>
+                <h3 class="text-sm font-semibold mb-2 text-gray-300">Фильтр по тегам:</h3>
                 <div class="flex flex-wrap gap-2" id="tags-filter">
                     ${tags.map(tag => `
                         <button data-tag="${tag.slug}" 
@@ -91,7 +151,7 @@ export default async function WikiPage() {
                 </div>
                 ${currentFilters.tagSlugs.length > 0 ? `
                     <button id="clearTagsBtn" class="mt-3 text-xs text-red-400 hover:text-red-300 transition">
-                        Clear all tags
+                        Очистить все теги
                     </button>
                 ` : ''}
             </div>
@@ -101,10 +161,12 @@ export default async function WikiPage() {
             <div class="grid grid-cols-1 gap-4" id="articles-list">
                 ${data.articles && data.articles.length > 0 ? 
                     data.articles.map(article => ArticleCard(article)).join('') : 
-                    '<div class="text-gray-400 text-center py-8">No articles found</div>'}
+                    '<div class="text-gray-400 text-center py-8">Записей не найдено</div>'}
             </div>
             
-            ${renderPagination(currentFilters.page, data.totalPages)}
+            <div class="pagination-container">
+                ${renderPagination(currentFilters.page, data.totalPages)}
+            </div>
         </div>
     `;
 }
@@ -113,14 +175,14 @@ function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap) {
     const filters = [];
     
     if (categoryName) {
-        filters.push(`<span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">Category: ${categoryName}</span>`);
+        filters.push(`<span class="px-2 py-1 bg-blue-900 text-blue-300 rounded">Категория: ${categoryName}</span>`);
     }
     
     if (selectedTagSlugs && selectedTagSlugs.length > 0) {
         const selectedTagNames = selectedTagSlugs
             .map(slug => tagMap.get(slug)?.name)
             .filter(Boolean);
-        filters.push(`<span class="px-2 py-1 bg-green-900 text-green-300 rounded">Tags: ${selectedTagNames.join(', ')}</span>`);
+        filters.push(`<span class="px-2 py-1 bg-green-900 text-green-300 rounded">Теги: ${selectedTagNames.join(', ')}</span>`);
     }
     
     if (filters.length === 0) return '';
@@ -136,7 +198,7 @@ function renderClearFilters() {
     return `
         <div class="mb-4">
             <button id="clearFiltersBtn" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition">
-                ✕ Clear all filters
+                ✕ Очистить все фильтры
             </button>
         </div>
     `;
@@ -154,18 +216,6 @@ function updateTagFilters() {
             btn.classList.add('bg-gray-700', 'text-gray-300');
         }
     });
-}
-
-function applyTagFilters() {
-    const params = new URLSearchParams(window.location.search);
-    const tagsArray = Array.from(selectedTagSlugs);
-    if (tagsArray.length > 0) {
-        params.set('tags', tagsArray.join(','));
-    } else {
-        params.delete('tags');
-    }
-    params.set('page', '1');
-    window.router.navigate(`/wiki?${params.toString()}`);
 }
 
 window.initWikiEvents = function() {
@@ -188,7 +238,8 @@ window.initWikiEvents = function() {
             }
         });
         
-        newSearchInput.focus();
+        // Восстанавливаем фокус только при инициализации
+        // newSearchInput.focus();
         const len = newSearchInput.value.length;
         newSearchInput.setSelectionRange(len, len);
     }

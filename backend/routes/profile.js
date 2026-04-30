@@ -4,7 +4,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { upload, processAndSaveAvatar, deleteAvatar, getDefaultAvatarPath } = require('../middleware/upload');
 
 const router = express.Router();
@@ -96,29 +96,6 @@ router.put('/change-password', authMiddleware, async (req, res) => {
         });
     } catch (error) {
         console.error('Error changing password:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Обновление профиля (имя, email)
-router.put('/profile', authMiddleware, async (req, res) => {
-    try {
-        const { name, email } = req.body;
-        const userId = req.userId;
-        
-        const updateData = {};
-        if (name) updateData.name = name;
-        if (email) updateData.email = email.toLowerCase();
-        
-        const user = await User.findByIdAndUpdate(
-            userId,
-            updateData,
-            { new: true, runValidators: true }
-        ).select('-password');
-        
-        res.json(user);
-    } catch (error) {
-        console.error('Error updating profile:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -216,16 +193,27 @@ router.get('/user/:id', async (req, res) => {
 });
 
 // Получение пользователя по slug (для публичного профиля)
-router.get('/user/by-slug/:slug', async (req, res) => {
+router.get('/user/by-slug/:slug', authMiddleware, async (req, res) => {
     try {
         const { slug } = req.params;
+        const currentUserId = req.userId;
+        
+        // Ищем пользователя
         const user = await User.findOne({ slug }).select('-password');
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        console.log(`User found: ${user.name}, role: ${user.role}`); // Для отладки
+        // Проверяем: если это не свой профиль и не админ - запрещаем
+        const isOwnProfile = user._id.toString() === currentUserId;
+        const isAdmin = req.userRole === 'admin';
+        
+        if (!isOwnProfile && !isAdmin) {
+            return res.status(403).json({ error: 'Access denied. Only admins can view other profiles.' });
+        }
+        
+        console.log(`User found: ${user.name}, role: ${user.role}`);
         
         res.json(user);
     } catch (error) {
@@ -234,8 +222,8 @@ router.get('/user/by-slug/:slug', async (req, res) => {
     }
 });
 
-// GET /api/profile/users - получение всех пользователей с фильтрацией
-router.get('/users', async (req, res) => {
+// GET /api/profile/users - получение всех пользователей с фильтрацией (ТОЛЬКО ДЛЯ АДМИНОВ)
+router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { search, role, sort = '-createdAt', page = 1, limit = 20 } = req.query;
         
@@ -289,8 +277,8 @@ router.get('/users', async (req, res) => {
     }
 });
 
-// GET /api/profile/users/stats - получение статистики по пользователям
-router.get('/users/stats', async (req, res) => {
+// GET /api/profile/users/stats - получение статистики по пользователям (ТОЛЬКО ДЛЯ АДМИНОВ)
+router.get('/users/stats', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const adminCount = await User.countDocuments({ role: 'admin' });

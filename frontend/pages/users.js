@@ -1,5 +1,5 @@
-import { PAGINATION } from '../constants.js';
-import { escapeHtml, debounce } from '../utils/utils.js';
+import { PAGINATION, SEARCH, UPLOAD, USER_ROLES } from '../constants.js';
+import { escapeHtml, debounce, formatDate } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 
 let currentFilters = {
@@ -10,24 +10,85 @@ let currentFilters = {
     limit: PAGINATION.USERS_LIMIT
 };
 
-function onPageChange(page) {
-    const params = new URLSearchParams();
-    if (currentFilters.search) params.set('search', currentFilters.search);
-    if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-    if (currentFilters.sort) params.set('sort', currentFilters.sort);
-    if (page > 1) params.set('page', page);
+// Функция для обновления только контента (список пользователей, пагинация)
+async function updateUsersContent() {
+    const [usersData, stats] = await Promise.all([
+        getUsers(currentFilters),
+        getUserStats()
+    ]);
     
-    window.router.navigate(`/users?${params.toString()}`);
+    // Обновляем статистику
+    const statsContainer = document.querySelector('.stats-container');
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-400">${stats.totalUsers || 0}</div>
+                    <div class="text-sm text-gray-400">Всего пользователей</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-400">${stats.adminCount || 0}</div>
+                    <div class="text-sm text-gray-400">Администраторов</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400">${stats.userCount || 0}</div>
+                    <div class="text-sm text-gray-400">Пользователей</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Обновляем список пользователей
+    const usersList = document.getElementById('users-list');
+    if (usersList) {
+        usersList.innerHTML = renderUsersList(usersData.users);
+    }
+    
+    // Обновляем пагинацию
+    const paginationContainer = document.querySelector('.pagination-container');
+    if (paginationContainer) {
+        const newPagination = renderPagination(currentFilters.page, usersData.totalPages);
+        if (newPagination) {
+            paginationContainer.innerHTML = newPagination;
+            attachPaginationEvents(onPageChange);
+        } else if (paginationContainer.parentNode) {
+            paginationContainer.innerHTML = '';
+        }
+    }
 }
 
-const performSearch = debounce(() => {
-    const params = new URLSearchParams();
-    if (currentFilters.search) params.set('search', currentFilters.search);
-    if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-    if (currentFilters.sort) params.set('sort', currentFilters.sort);
+function onPageChange(page) {
+    currentFilters.page = page;
     
-    window.router.navigate(`/users?${params.toString()}`);
-}, 500);
+    // Обновляем URL
+    const url = new URL(window.location.href);
+    if (page > 1) {
+        url.searchParams.set('page', page);
+    } else {
+        url.searchParams.delete('page');
+    }
+    window.history.pushState({}, '', url);
+    
+    // Обновляем контент
+    updateUsersContent();
+}
+
+const performSearch = debounce(async () => {
+    currentFilters.page = 1;
+    
+    // Обновляем URL без перезагрузки страницы
+    const url = new URL(window.location.href);
+    if (currentFilters.search) {
+        url.searchParams.set('search', currentFilters.search);
+    } else {
+        url.searchParams.delete('search');
+    }
+    url.searchParams.delete('page');
+    window.history.pushState({}, '', url);
+    
+    // Обновляем контент
+    await updateUsersContent();
+}, SEARCH.DEBOUNCE_DELAY);
 
 async function getUsers(filters) {
     const params = new URLSearchParams();
@@ -62,13 +123,13 @@ async function getUserStats() {
 
 function renderUsersList(users) {
     if (!users || users.length === 0) {
-        return '<div class="text-center py-8 text-gray-400">No users found</div>';
+        return '<div class="text-center py-8 text-gray-400">Пользователей не найдено</div>';
     }
     
     return users.map(user => `
         <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
             <div class="flex items-start gap-4">
-                <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : '/api/profile/avatar/default-avatar.png'}" 
+                <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : UPLOAD.DEFAULT_AVATAR}" 
                      alt="${escapeHtml(user.name)}"
                      class="w-12 h-12 rounded-full object-cover">
                 <div class="flex-1">
@@ -76,20 +137,20 @@ function renderUsersList(users) {
                         <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
                             ${escapeHtml(user.name)}
                         </a>
-                        ${user.role === 'admin' ? 
-                            '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">👑 Administrator</span>' : 
-                            '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">User</span>'
+                        ${user.role === USER_ROLES.ADMIN ? 
+                            '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Администратор</span>' : 
+                            '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Пользователь</span>'
                         }
                     </div>
                     <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
                     <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                        <span>📅 Joined: ${formatDate(user.createdAt)}</span>
-                        <span>📝 ${user.articlesCount || 0} articles</span>
-                        <span>👁️ ${user.totalViews || 0} total views</span>
+                        <span>📅 Зарегистрирован: ${formatDate(user.createdAt)}</span>
+                        <span>📝 ${user.articlesCount || 0} записей</span>
+                        <span>👁️ ${user.totalViews || 0} просмотров</span>
                     </div>
                 </div>
                 <a href="/profile/${user.slug}" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition whitespace-nowrap">
-                    View Profile
+                    Профиль
                 </a>
             </div>
         </div>
@@ -115,51 +176,53 @@ export default async function UsersPage() {
     return `
         <div class="max-w-6xl mx-auto">
             <div class="mb-6">
-                <h1 class="text-3xl font-bold mb-2">👥 Community Members</h1>
-                <p class="text-gray-400">${stats.totalUsers || 0} total members</p>
+                <h1 class="text-3xl font-bold mb-2">👥 Пользователи</h1>
+                <p class="text-gray-400">${stats.totalUsers || 0} пользователей</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-blue-400">${stats.totalUsers || 0}</div>
-                    <div class="text-sm text-gray-400">Total Members</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-purple-400">${stats.adminCount || 0}</div>
-                    <div class="text-sm text-gray-400">Administrators</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400">${stats.userCount || 0}</div>
-                    <div class="text-sm text-gray-400">Members</div>
+            <div class="stats-container">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-gray-800 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-blue-400">${stats.totalUsers || 0}</div>
+                        <div class="text-sm text-gray-400">Всего пользователей</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-purple-400">${stats.adminCount || 0}</div>
+                        <div class="text-sm text-gray-400">Администраторов</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-green-400">${stats.userCount || 0}</div>
+                        <div class="text-sm text-gray-400">Пользователей</div>
+                    </div>
                 </div>
             </div>
             
             <div class="bg-gray-800 rounded-lg p-4 mb-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Search by name</label>
+                        <label class="block text-sm font-medium mb-2">Поиск по имени</label>
                         <input type="text" 
                                id="searchInput" 
-                               placeholder="Search users..." 
+                               placeholder="Введите имя" 
                                autocomplete="off"
                                value="${escapeHtml(currentFilters.search)}"
                                class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Filter by role</label>
+                        <label class="block text-sm font-medium mb-2">Показать по роли</label>
                         <select id="roleFilter" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="all" ${currentFilters.role === 'all' ? 'selected' : ''}>All users</option>
-                            <option value="admin" ${currentFilters.role === 'admin' ? 'selected' : ''}>Administrators</option>
-                            <option value="user" ${currentFilters.role === 'user' ? 'selected' : ''}>Members</option>
+                            <option value="all" ${currentFilters.role === 'all' ? 'selected' : ''}>Все пользователи</option>
+                            <option value="admin" ${currentFilters.role === 'admin' ? 'selected' : ''}>Администраторы</option>
+                            <option value="user" ${currentFilters.role === 'user' ? 'selected' : ''}>Пользователи</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Sort by</label>
+                        <label class="block text-sm font-medium mb-2">Показать сначала</label>
                         <select id="sortFilter" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="-createdAt" ${currentFilters.sort === '-createdAt' ? 'selected' : ''}>Newest first</option>
-                            <option value="createdAt" ${currentFilters.sort === 'createdAt' ? 'selected' : ''}>Oldest first</option>
-                            <option value="name" ${currentFilters.sort === 'name' ? 'selected' : ''}>Name A-Z</option>
-                            <option value="-name" ${currentFilters.sort === '-name' ? 'selected' : ''}>Name Z-A</option>
+                            <option value="-createdAt" ${currentFilters.sort === '-createdAt' ? 'selected' : ''}>Самые новые</option>
+                            <option value="createdAt" ${currentFilters.sort === 'createdAt' ? 'selected' : ''}>Самые старые</option>
+                            <option value="name" ${currentFilters.sort === 'name' ? 'selected' : ''}>От А до Я</option>
+                            <option value="-name" ${currentFilters.sort === '-name' ? 'selected' : ''}>От Я до А</option>
                         </select>
                     </div>
                 </div>
@@ -169,7 +232,9 @@ export default async function UsersPage() {
                 ${renderUsersList(usersData.users)}
             </div>
             
-            ${renderPagination(currentFilters.page, usersData.totalPages)}
+            <div class="pagination-container">
+                ${renderPagination(currentFilters.page, usersData.totalPages)}
+            </div>
         </div>
     `;
 }
@@ -196,7 +261,6 @@ window.initUsersPage = function() {
             }
         });
         
-        newSearchInput.focus();
         const len = newSearchInput.value.length;
         newSearchInput.setSelectionRange(len, len);
     }
@@ -206,15 +270,22 @@ window.initUsersPage = function() {
         const newRoleFilter = roleFilter.cloneNode(true);
         roleFilter.parentNode.replaceChild(newRoleFilter, roleFilter);
         
-        newRoleFilter.addEventListener('change', (e) => {
+        newRoleFilter.addEventListener('change', async (e) => {
             currentFilters.role = e.target.value;
             currentFilters.page = 1;
-            const params = new URLSearchParams();
-            if (currentFilters.search) params.set('search', currentFilters.search);
-            if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-            if (currentFilters.sort) params.set('sort', currentFilters.sort);
             
-            window.router.navigate(`/users?${params.toString()}`);
+            // Обновляем URL
+            const url = new URL(window.location.href);
+            if (currentFilters.role && currentFilters.role !== 'all') {
+                url.searchParams.set('role', currentFilters.role);
+            } else {
+                url.searchParams.delete('role');
+            }
+            url.searchParams.delete('page');
+            window.history.pushState({}, '', url);
+            
+            // Обновляем контент
+            await updateUsersContent();
         });
     }
     
@@ -223,15 +294,18 @@ window.initUsersPage = function() {
         const newSortFilter = sortFilter.cloneNode(true);
         sortFilter.parentNode.replaceChild(newSortFilter, sortFilter);
         
-        newSortFilter.addEventListener('change', (e) => {
+        newSortFilter.addEventListener('change', async (e) => {
             currentFilters.sort = e.target.value;
             currentFilters.page = 1;
-            const params = new URLSearchParams();
-            if (currentFilters.search) params.set('search', currentFilters.search);
-            if (currentFilters.role && currentFilters.role !== 'all') params.set('role', currentFilters.role);
-            if (currentFilters.sort) params.set('sort', currentFilters.sort);
             
-            window.router.navigate(`/users?${params.toString()}`);
+            // Обновляем URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('sort', currentFilters.sort);
+            url.searchParams.delete('page');
+            window.history.pushState({}, '', url);
+            
+            // Обновляем контент
+            await updateUsersContent();
         });
     }
     

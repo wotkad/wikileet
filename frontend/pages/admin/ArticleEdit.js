@@ -27,8 +27,8 @@ export default async function ArticleEditPage(params) {
             if (!article) {
                 return `
                     <div class="text-center py-12">
-                        <h2 class="text-2xl font-bold text-red-400">Article not found</h2>
-                        <a href="/admin/articles" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Back to Admin</a>
+                        <h2 class="text-2xl font-bold text-red-400">Запись не найдена</h2>
+                        <a href="/admin/articles" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Вернуться в админ панель</a>
                     </div>
                 `;
             }
@@ -44,15 +44,14 @@ export default async function ArticleEditPage(params) {
     return `
         <div class="mx-auto">
             <div class="mb-6">
-                <h1 class="text-3xl font-bold">${isEdit ? 'Edit Article' : 'Create New Article'}</h1>
-                <p class="text-gray-400 mt-1">Fill in the form below to ${isEdit ? 'update' : 'create'} an article</p>
-                ${isEdit ? '<p class="text-yellow-400 text-sm mt-1">⚠️ Warning: Changing the slug will break existing links!</p>' : ''}
+                <h1 class="text-3xl font-bold">${isEdit ? 'Редактировать запись "' + article.title + '"' : 'Создать новую запись'}</h1>
+                <p class="text-gray-400 mt-1">Заполните форму ниже чтобы ${isEdit ? 'обновить' : 'создать'} запись</p>
             </div>
             
             <form id="articleForm" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Title *</label>
+                        <label class="block text-sm font-medium mb-2">Заголовок *</label>
                         <input type="text" 
                                id="title" 
                                required
@@ -61,7 +60,7 @@ export default async function ArticleEditPage(params) {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Slug (URL identifier)</label>
+                        <label class="block text-sm font-medium mb-2">Ссылка</label>
                         <input type="text" 
                                id="slug" 
                                placeholder="Leave empty to auto-generate from title"
@@ -69,13 +68,13 @@ export default async function ArticleEditPage(params) {
                                title="Only lowercase letters, numbers, and hyphens"
                                value="${escapeHtml(article?.slug || '')}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">Leave empty to auto-generate from title. Example: my-awesome-article</p>
-                        ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Auto-generated from title if left empty</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Editing slug will change the article URL</p>'}
+                        <p class="text-xs text-gray-500 mt-1">Оставьте поле пустым, чтобы заголовок генерировался автоматически из заголовка</p>
+                        ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Автоматически генерируется из заголовка, если поле оставлено пустым</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Изменение параметра slug приведет к изменению URL статьи.</p>'}
                     </div>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Short Description *</label>
+                    <label class="block text-sm font-medium mb-2">Короткое описание *</label>
                     <textarea id="description" 
                               rows="3"
                               required
@@ -83,15 +82,16 @@ export default async function ArticleEditPage(params) {
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Content * (Markdown supported)</label>
+                    <label class="block text-sm font-medium mb-2">Контент *</label>
                     <textarea id="content" 
                               rows="15"
+                              required
                               class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${escapeHtml(article?.content || '')}</textarea>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Category *</label>
+                        <label class="block text-sm font-medium mb-2">Категория *</label>
                         <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">Select a category</option>
                             ${categories.map(cat => `
@@ -103,9 +103,9 @@ export default async function ArticleEditPage(params) {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Author</label>
+                        <label class="block text-sm font-medium mb-2">Автор</label>
                         <select id="author" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select author (default: current user)</option>
+                            <option value="">Выбрать автора (по умолчанию: текущий пользователь)</option>
                             ${users.map(user => `
                                 <option value="${user._id}" ${currentAuthor === user._id ? 'selected' : ''}>
                                     ${escapeHtml(user.name)} (${escapeHtml(user.email)})
@@ -116,7 +116,7 @@ export default async function ArticleEditPage(params) {
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Tags (select multiple)</label>
+                    <label class="block text-sm font-medium mb-2">Теги (можно выбрать несколько)</label>
                     <div class="flex flex-wrap gap-2 p-3 bg-gray-800 rounded-lg max-h-32 overflow-y-auto" id="tags-container">
                         ${tags.map(tag => `
                             <label class="flex items-center space-x-2 px-3 py-1 bg-gray-700 rounded-full cursor-pointer hover:bg-gray-600 transition">
@@ -131,29 +131,29 @@ export default async function ArticleEditPage(params) {
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Status</label>
+                        <label class="block text-sm font-medium mb-2">Статус</label>
                         <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>📝 Draft</option>
-                            <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>🚀 Published</option>
+                            <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>📝 Черновик</option>
+                            <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>🚀 Опубликовать</option>
                         </select>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Publish Date</label>
+                        <label class="block text-sm font-medium mb-2">Дата</label>
                         <input type="datetime-local" 
                                id="publishDate" 
                                value="${currentPublishDate}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">Leave as is for current date/time</p>
+                        <p class="text-xs text-gray-500 mt-1">Оставьте как есть для текущей даты/времени</p>
                     </div>
                 </div>
                 
                 <div class="flex gap-4">
                     <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
-                        💾 Save Article
+                        💾 Сохранить
                     </button>
                     <a href="/admin/articles" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
-                        Cancel
+                        Отмена
                     </a>
                 </div>
             </form>

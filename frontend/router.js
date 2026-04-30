@@ -199,14 +199,31 @@ const router = {
             this.navigate('/login');
             return;
         }
-        
+
+        // Защита чужих профилей (только админы)
+        if (path.startsWith('/profile/') && path !== '/profile') {
+            if (!state.currentUser || state.currentUser.role !== 'admin') {
+                this.navigate('/login');
+                return;
+            }
+        }
+
+        // Проверка для админки
         if (path.startsWith('/admin')) {
             if (!state.currentUser || state.currentUser.role !== 'admin') {
                 this.navigate('/login');
                 return;
             }
         }
-        
+
+        // Проверка для страницы пользователей (только админы)
+        if (path === '/users') {
+            if (!state.currentUser || state.currentUser.role !== 'admin') {
+                this.navigate('/login');
+                return;
+            }
+        }
+
         if ((path === '/login' || path === '/register') && state.currentUser) {
             this.navigate('/');
             return;

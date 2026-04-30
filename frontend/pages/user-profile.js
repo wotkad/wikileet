@@ -2,7 +2,7 @@ import { getUserBySlug, getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION } from '../constants.js';
+import { PAGINATION, UPLOAD, USER_ROLES } from '../constants.js';
 
 let currentPage = 1;
 let currentUser = null;
@@ -24,9 +24,9 @@ function renderUserProfilePage(user, allArticles) {
     
     const publishedArticles = allArticles.filter(a => a.status === 'published');
     const registeredDate = formatDate(user.createdAt);
-    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : UPLOAD.DEFAULT_AVATAR;
     
-    const roleDisplay = user.role === 'admin' ? '👑 Administrator' : 'User';
+    const roleDisplay = user.role === 'admin' ? USER_ROLES.ADMIN : USER_ROLES.USER;
     const roleBadgeClass = user.role === 'admin' ? 'bg-purple-900 text-purple-300' : 'bg-blue-800 text-blue-300';
     
     container.innerHTML = `
@@ -46,7 +46,7 @@ function renderUserProfilePage(user, allArticles) {
                                 ${roleDisplay}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
-                                📅 Joined: ${registeredDate}
+                                📅 Зарегистрирован: ${registeredDate}
                             </span>
                         </div>
                     </div>
@@ -55,29 +55,29 @@ function renderUserProfilePage(user, allArticles) {
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-blue-400">${publishedArticles.length}</div>
-                    <div class="text-gray-400 mt-1">Articles Published</div>
+                    <div class="text-3xl font-bold text-blue-400">${allArticles.length}</div>
+                    <div class="text-gray-400 mt-1">Всего записей</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-green-400">
-                        ${publishedArticles.reduce((sum, a) => sum + (a.views || 0), 0)}
+                        ${allArticles.filter(a => a.status === 'published').length}
                     </div>
-                    <div class="text-gray-400 mt-1">Total Views</div>
+                    <div class="text-gray-400 mt-1">Опубликованные записи</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-purple-400">
-                        ${publishedArticles.reduce((sum, a) => sum + (a.readTime || 1), 0)}
+                    <div class="text-3xl font-bold text-yellow-400">
+                        ${allArticles.filter(a => a.status === 'draft').length}
                     </div>
-                    <div class="text-gray-400 mt-1">Minutes of Reading</div>
+                    <div class="text-gray-400 mt-1">Черновики</div>
                 </div>
             </div>
             
             <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-2xl font-bold mb-4">📝 Articles by ${escapeHtml(user.name)}</h2>
+                <h2 class="text-2xl font-bold mb-4">📝 Записи ${escapeHtml(user.name)}</h2>
                 <div class="space-y-4">
                     ${paginatedArticles.length > 0 ? 
                         paginatedArticles.map(article => ArticleCard(article)).join('') : 
-                        '<div class="text-center py-8 text-gray-400">No articles published yet</div>'
+                        '<div class="text-center py-8 text-gray-400">Записей ещё нет</div>'
                     }
                 </div>
                 ${renderPagination(currentPage, totalPages)}
@@ -93,7 +93,7 @@ export default async function UserProfilePage(params) {
     
     if (!slug) {
         window.router.navigate('/');
-        return '<div class="text-center py-12">Loading...</div>';
+        return '<div class="text-center py-12">Загрузка...</div>';
     }
     
     try {
@@ -102,7 +102,7 @@ export default async function UserProfilePage(params) {
         if (!user) {
             return `
                 <div class="text-center py-12">
-                    <h2 class="text-2xl font-bold text-red-400">User not found</h2>
+                    <h2 class="text-2xl font-bold text-red-400">Пользователь не найден</h2>
                     <a href="/" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Back to Home</a>
                 </div>
             `;
@@ -128,15 +128,15 @@ export default async function UserProfilePage(params) {
         
         return `
             <div id="user-profile-content" class="mx-auto">
-                <div class="text-center py-12">Loading profile...</div>
+                <div class="text-center py-12">Загрузка профиля...</div>
             </div>
         `;
     } catch (error) {
         console.error('Error loading user profile:', error);
         return `
             <div class="text-center py-12">
-                <h2 class="text-2xl font-bold text-red-400">Error loading profile</h2>
-                <a href="/" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Back to Home</a>
+                <h2 class="text-2xl font-bold text-red-400">Ошибка загрузки профиля</h2>
+                <a href="/" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Вернуться на главную</a>
             </div>
         `;
     }
