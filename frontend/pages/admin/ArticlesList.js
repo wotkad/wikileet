@@ -1,29 +1,41 @@
+import { PAGINATION } from '../../constants.js';
 import { getArticles, deleteArticle } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
 import { escapeHtml, formatDate, getStatusText, getStatusColor, getStatusIcon } from '../../utils/utils.js';
+import { renderPagination, attachPaginationEvents } from '../../components/Pagination.js';
 import '../../components/Toast.js';
 
 let currentPage = 1;
-let currentData = null;
 let currentStatusFilter = 'all';
 
+function onPageChange(page) {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    if (currentStatusFilter !== 'all') {
+        params.set('status', currentStatusFilter);
+    }
+    window.router.navigate(`/admin/articles?${params.toString()}`);
+}
+
 export default async function ArticlesListPage() {
-    const params = { page: currentPage, limit: 20 };
+    const urlParams = new URLSearchParams(window.location.search);
     
+    currentPage = parseInt(urlParams.get('page')) || 1;
+    currentStatusFilter = urlParams.get('status') || 'all';
+    
+    const params = { page: currentPage, limit: PAGINATION.ADMIN_ARTICLES_LIMIT };
     if (currentStatusFilter !== 'all') {
         params.status = currentStatusFilter;
-    } else {
-        params.status = 'all';
     }
     
-    currentData = await getArticles(params);
+    const currentData = await getArticles(params);
     
     return `
         <div class="mx-auto">
             <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h1 class="text-3xl font-bold">Manage Articles</h1>
-                    <p class="text-gray-400 mt-1" id="total-count">${currentData.total || 0} total articles</p>
+                    <p class="text-gray-400 mt-1">${currentData.total || 0} total articles</p>
                 </div>
                 <div class="flex gap-3">
                     <select id="status-filter" class="px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -38,11 +50,11 @@ export default async function ArticlesListPage() {
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 gap-4" id="articles-list-container">
+            <div class="grid grid-cols-1 gap-4">
                 ${renderArticlesList(currentData.articles)}
             </div>
             
-            ${currentData.totalPages > 1 ? renderPagination(currentData) : ''}
+            ${renderPagination(currentPage, currentData.totalPages)}
         </div>
     `;
 }
@@ -92,7 +104,7 @@ function renderArticlesList(articles) {
                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition">
                             Edit
                         </a>
-                        <button data-id="${article._id}" data-slug="${article.slug}" data-title="${escapeHtml(article.title)}" 
+                        <button data-slug="${article.slug}" data-title="${escapeHtml(article.title)}" 
                                 class="delete-btn px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition">
                             Delete
                         </button>
@@ -109,69 +121,28 @@ function renderStatusBadge(status) {
     </span>`;
 }
 
-function renderPagination(data) {
-    return `
-        <div class="flex justify-center gap-2 mt-8">
-            ${Array.from({ length: Math.min(data.totalPages, 10) }, (_, i) => i + 1).map(page => `
-                <button class="page-btn px-3 py-1 rounded ${page === currentPage ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
-                        data-page="${page}">
-                    ${page}
-                </button>
-            `).join('')}
-        </div>
-    `;
-}
-
-async function refreshArticlesList() {
-    try {
-        const params = { page: currentPage, limit: 20 };
-        
-        if (currentStatusFilter !== 'all') {
-            params.status = currentStatusFilter;
-        } else {
-            params.status = 'all';
-        }
-        
-        currentData = await getArticles(params);
-        
-        const container = document.getElementById('articles-list-container');
-        const totalCountSpan = document.getElementById('total-count');
-        
-        if (container) {
-            container.innerHTML = renderArticlesList(currentData.articles);
-        }
-        
-        if (totalCountSpan) {
-            totalCountSpan.textContent = `${currentData.total || 0} total articles`;
-        }
-        
-        updatePagination();
-        
-        attachDeleteEvents();
-        attachPaginationEvents();
-    } catch (error) {
-        console.error('Error refreshing articles list:', error);
-        window.toast?.error('Failed to refresh articles list');
-    }
-}
-
-function updatePagination() {
-    const existingPagination = document.querySelector('.flex.justify-center.gap-2.mt-8');
-    if (existingPagination && currentData.totalPages > 1) {
-        existingPagination.innerHTML = renderPagination(currentData).replace('flex justify-center gap-2 mt-8', '');
-        attachPaginationEvents();
-    } else if (existingPagination && currentData.totalPages <= 1) {
-        existingPagination.remove();
-    } else if (!existingPagination && currentData.totalPages > 1) {
-        const container = document.querySelector('.mx-auto');
-        if (container) {
-            container.insertAdjacentHTML('beforeend', renderPagination(currentData));
-            attachPaginationEvents();
+async function handleDelete(slug, title) {
+    const confirmed = await showConfirmDialog(
+        `Delete "${title}"?`,
+        'This action cannot be undone.',
+        'Delete',
+        'Cancel'
+    );
+    
+    if (confirmed) {
+        try {
+            await deleteArticle(slug);
+            window.toast?.success(`Article "${title}" deleted successfully`);
+            // Перезагружаем страницу после удаления
+            window.router.navigate(`/admin/articles?page=${currentPage}&status=${currentStatusFilter}`);
+        } catch (error) {
+            console.error('Error deleting article:', error);
+            window.toast?.error('Failed to delete article: ' + error.message);
         }
     }
 }
 
-async function attachDeleteEvents() {
+function attachDeleteEvents() {
     document.querySelectorAll('.delete-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -179,53 +150,14 @@ async function attachDeleteEvents() {
         newBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            const articleTitle = newBtn.dataset.title;
-            
-            const confirmed = await showConfirmDialog(
-                `Delete "${articleTitle}"?`,
-                'This action cannot be undone.',
-                'Delete',
-                'Cancel'
-            );
-            
-            if (confirmed) {
-                try {
-                    const articleSlug = newBtn.dataset.slug;
-                    newBtn.textContent = 'Deleting...';
-                    newBtn.disabled = true;
-                    newBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    
-                    await deleteArticle(articleSlug);
-                    
-                    window.toast?.success(`Article "${articleTitle}" deleted successfully`);
-                    await refreshArticlesList();
-                } catch (error) {
-                    console.error('Error deleting article:', error);
-                    window.toast?.error('Failed to delete article: ' + error.message);
-                    
-                    newBtn.textContent = 'Delete';
-                    newBtn.disabled = false;
-                    newBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            }
+            const slug = newBtn.dataset.slug;
+            const title = newBtn.dataset.title;
+            await handleDelete(slug, title);
         });
     });
 }
 
-async function attachPaginationEvents() {
-    document.querySelectorAll('.page-btn').forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-        
-        newBtn.addEventListener('click', async () => {
-            currentPage = parseInt(newBtn.dataset.page);
-            await refreshArticlesList();
-        });
-    });
-}
-
-async function attachFilterEvents() {
+function attachFilterEvents() {
     const filterSelect = document.getElementById('status-filter');
     if (filterSelect) {
         const currentValue = filterSelect.value;
@@ -234,17 +166,20 @@ async function attachFilterEvents() {
         
         newFilter.value = currentValue;
         
-        newFilter.addEventListener('change', async (e) => {
-            const newValue = e.target.value;
-            currentStatusFilter = newValue;
-            currentPage = 1;
-            await refreshArticlesList();
+        newFilter.addEventListener('change', (e) => {
+            const status = e.target.value;
+            const params = new URLSearchParams();
+            params.set('page', '1');
+            if (status !== 'all') {
+                params.set('status', status);
+            }
+            window.router.navigate(`/admin/articles?${params.toString()}`);
         });
     }
 }
 
 window.initArticlesList = function() {
     attachDeleteEvents();
-    attachPaginationEvents();
     attachFilterEvents();
+    attachPaginationEvents(onPageChange);
 };

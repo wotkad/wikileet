@@ -1,6 +1,7 @@
-import { escapeHtml, calculateReadTime, formatDate } from '../utils/utils.js';
+import { escapeHtml, calculateReadTime } from '../utils/utils.js';
 import { getArticle } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
+import { PAGINATION } from '../constants.js';
 
 export default async function ArticlePage(params) {
     try {
@@ -19,8 +20,11 @@ export default async function ArticlePage(params) {
         const author = article.author || {};
         const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : '/api/profile/avatar/default-avatar.png';
         
+        // Обрезаем похожие статьи до лимита
+        const similarArticles = (similar || []).slice(0, PAGINATION.SIMILAR_ARTICLES_LIMIT);
+        
         return `
-            <article class="mx-auto">
+            <article class="max-w-4xl mx-auto">
                 <a href="/wiki" class="inline-block mb-4 text-blue-400 hover:text-blue-300 transition">
                     ← Back to articles
                 </a>
@@ -40,7 +44,7 @@ export default async function ArticlePage(params) {
                     </div>
                     
                     <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
-                        <div>📅 ${formatDate(article.createdAt)}</div>
+                        <div>📅 ${new Date(article.createdAt).toLocaleDateString()}</div>
                         <div>⏱️ ${readTime} min read</div>
                         <div>👁️ ${article.views} views</div>
                         <div class="flex items-center gap-2">
@@ -54,11 +58,11 @@ export default async function ArticlePage(params) {
                     </div>
                 </div>
                 
-                ${similar && similar.length > 0 ? `
+                ${similarArticles.length > 0 ? `
                     <div class="mt-8 bg-gray-800 rounded-lg p-6">
                         <h3 class="text-xl font-bold mb-4">Similar Articles</h3>
                         <div class="space-y-4">
-                            ${similar.map(art => ArticleCard(art)).join('')}
+                            ${similarArticles.map(art => ArticleCard(art)).join('')}
                         </div>
                     </div>
                 ` : ''}

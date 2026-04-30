@@ -1,3 +1,4 @@
+import { UPLOAD } from '../constants.js';
 import { updateHeaderUser } from './Header.js';
 
 export function initAvatarUpload() {
@@ -38,13 +39,13 @@ export function initAvatarUpload() {
             
             if (!file) return;
             
-            if (!file.type.startsWith('image/')) {
-                window.toast?.error('Please select an image file');
+            if (!UPLOAD.ALLOWED_TYPES.includes(file.type)) {
+                window.toast?.error('Please select an image file (JPEG, PNG, GIF, WEBP)');
                 return;
             }
             
-            if (file.size > 5 * 1024 * 1024) {
-                window.toast?.error('File size must be less than 5MB');
+            if (file.size > UPLOAD.MAX_FILE_SIZE) {
+                window.toast?.error(`File size must be less than ${UPLOAD.MAX_FILE_SIZE / 1024 / 1024}MB`);
                 return;
             }
             
@@ -133,7 +134,7 @@ export function initAvatarUpload() {
                 // Обновляем превью на дефолтный
                 const preview = document.getElementById('avatar-preview');
                 if (preview) {
-                    preview.src = '/api/profile/avatar/default-avatar.png?t=' + Date.now();
+                    preview.src = `${UPLOAD.DEFAULT_AVATAR}?t=${Date.now()}`;
                 }
                 
                 // Обновляем состояние

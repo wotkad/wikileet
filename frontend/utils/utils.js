@@ -1,3 +1,5 @@
+import { READ_TIME } from '../constants.js';
+
 // HTML экранирование
 export function escapeHtml(str) {
     if (!str) return '';
@@ -14,7 +16,7 @@ export function calculateReadTime(content) {
     if (!content) return 1;
     const text = content.replace(/<[^>]*>/g, '');
     const words = text.trim().split(/\s+/).length;
-    const minutes = Math.ceil(words / 200);
+    const minutes = Math.ceil(words / READ_TIME.WORDS_PER_MINUTE);
     return Math.max(1, minutes);
 }
 

@@ -1,7 +1,8 @@
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml } from '../utils/utils.js';
 import { getState } from '../state.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
+import { PAGINATION } from '../constants.js';
 
 export default async function HomePage() {
     const state = getState();
@@ -17,9 +18,14 @@ export default async function HomePage() {
         tags = await getTags();
     }
     
-    // Загружаем статьи с полной информацией об авторе
-    const recentArticles = await getArticles({ sort: '-createdAt', limit: 6 });
-    const popularArticles = await getArticles({ sort: '-views', limit: 6 });
+    const recentArticles = await getArticles({ 
+        sort: '-createdAt', 
+        limit: PAGINATION.HOME_RECENT_LIMIT 
+    });
+    const popularArticles = await getArticles({ 
+        sort: '-views', 
+        limit: PAGINATION.HOME_POPULAR_LIMIT 
+    });
 
     return `
         <div class="mx-auto space-y-8">

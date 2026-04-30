@@ -1,6 +1,8 @@
+import { PAGINATION, SEARCH } from '../constants.js';
 import { escapeHtml, debounce } from '../utils/utils.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
+import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 
 let currentFilters = {
     search: '',
@@ -8,11 +10,11 @@ let currentFilters = {
     tagSlugs: [],
     sort: '-createdAt',
     page: 1,
+    limit: PAGINATION.WIKI_LIMIT
 };
 
 let selectedTagSlugs = new Set();
 
-// Создаем debounced функцию поиска
 const performSearch = debounce((searchValue) => {
     const params = new URLSearchParams(window.location.search);
     if (searchValue && searchValue.trim()) {
@@ -22,7 +24,13 @@ const performSearch = debounce((searchValue) => {
     }
     params.set('page', '1');
     window.router.navigate(`/wiki?${params.toString()}`);
-}, 500);
+}, SEARCH.DEBOUNCE_DELAY);
+
+function onPageChange(page) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', page);
+    window.router.navigate(`/wiki?${params.toString()}`);
+}
 
 export default async function WikiPage() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -36,6 +44,7 @@ export default async function WikiPage() {
         tagSlugs: tagsFromUrl,
         sort: urlParams.get('sort') || '-createdAt',
         page: parseInt(urlParams.get('page')) || 1,
+        limit: 10
     };
     
     const [data, categories, tags] = await Promise.all([
@@ -54,7 +63,7 @@ export default async function WikiPage() {
     }
 
     return `
-        <div class="mx-auto">
+        <div class="max-w-4xl mx-auto">
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">All Articles</h1>
                 ${renderFiltersInfo(selectedCategoryName, currentFilters.tagSlugs, tagMap)}
@@ -75,7 +84,7 @@ export default async function WikiPage() {
                 <div class="flex flex-wrap gap-2" id="tags-filter">
                     ${tags.map(tag => `
                         <button data-tag="${tag.slug}" 
-                                class="tag-filter-btn px-3 px-3 py-1 rounded-full text-sm transition ${currentFilters.tagSlugs.includes(tag.slug) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
+                                class="tag-filter-btn px-3 py-1 rounded-full text-sm transition ${currentFilters.tagSlugs.includes(tag.slug) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">
                             ${escapeHtml(tag.name)}
                         </button>
                     `).join('')}
@@ -95,7 +104,7 @@ export default async function WikiPage() {
                     '<div class="text-gray-400 text-center py-8">No articles found</div>'}
             </div>
             
-            ${data.totalPages > 1 ? renderPagination(data) : ''}
+            ${renderPagination(currentFilters.page, data.totalPages)}
         </div>
     `;
 }
@@ -129,19 +138,6 @@ function renderClearFilters() {
             <button id="clearFiltersBtn" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition">
                 ✕ Clear all filters
             </button>
-        </div>
-    `;
-}
-
-function renderPagination(data) {
-    return `
-        <div class="flex justify-center gap-2 mt-8">
-            ${Array.from({ length: Math.min(data.totalPages, 10) }, (_, i) => i + 1).map(page => `
-                <button class="page-btn px-3 py-1 rounded ${page === currentFilters.page ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
-                        data-page="${page}">
-                    ${page}
-                </button>
-            `).join('')}
         </div>
     `;
 }
@@ -229,16 +225,7 @@ window.initWikiEvents = function() {
         });
     }
     
-    document.querySelectorAll('.page-btn').forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-        
-        newBtn.addEventListener('click', () => {
-            const params = new URLSearchParams(window.location.search);
-            params.set('page', newBtn.dataset.page);
-            window.router.navigate(`/wiki?${params.toString()}`);
-        });
-    });
+    attachPaginationEvents(onPageChange);
     
     const clearBtn = document.getElementById('clearFiltersBtn');
     if (clearBtn) {

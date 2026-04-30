@@ -2,30 +2,31 @@ import { getState } from '../state.js';
 import { getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
+import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
+import { PAGINATION } from '../constants.js';
 
-export default async function ProfilePage() {
-    const state = getState();
-    const user = state.currentUser;
+let currentPage = 1;
+let currentUser = null;
+let currentArticles = [];
+
+function onPageChange(page) {
+    currentPage = page;
+    renderProfilePage(currentUser, currentArticles);
+}
+
+function renderProfilePage(user, allArticles) {
+    const start = (currentPage - 1) * PAGINATION.PROFILE_ARTICLES_LIMIT;
+    const end = start + PAGINATION.PROFILE_ARTICLES_LIMIT;
+    const paginatedArticles = allArticles.slice(start, end);
+    const totalPages = Math.ceil(allArticles.length / PAGINATION.PROFILE_ARTICLES_LIMIT);
     
-    if (!user) {
-        window.router.navigate('/login');
-        return '<div class="text-center py-12">Redirecting to login...</div>';
-    }
-    
-    const userId = user._id || user.id;
-    
-    let articles = [];
-    try {
-        const articlesData = await getUserArticles(userId);
-        articles = articlesData.articles || [];
-    } catch (error) {
-        console.error('Error loading articles:', error);
-    }
+    const container = document.getElementById('profile-content');
+    if (!container) return;
     
     const registeredDate = formatDate(user.createdAt);
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
     
-    return `
+    container.innerHTML = `
         <div class="mx-auto">
             <div class="bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg p-8 mb-8">
                 <div class="flex items-center gap-6">
@@ -51,7 +52,7 @@ export default async function ProfilePage() {
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
-                                ${user.role === 'admin' ? '👑 Administrator' : '📖 Member'}
+                                ${user.role === 'admin' ? '👑 Administrator' : 'User'}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
                                 📅 Registered: ${registeredDate}
@@ -109,18 +110,18 @@ export default async function ProfilePage() {
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-blue-400">${articles.length}</div>
+                    <div class="text-3xl font-bold text-blue-400">${allArticles.length}</div>
                     <div class="text-gray-400 mt-1">Articles Written</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-green-400">
-                        ${articles.filter(a => a.status === 'published').length}
+                        ${allArticles.filter(a => a.status === 'published').length}
                     </div>
                     <div class="text-gray-400 mt-1">Published Articles</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-yellow-400">
-                        ${articles.filter(a => a.status === 'draft').length}
+                        ${allArticles.filter(a => a.status === 'draft').length}
                     </div>
                     <div class="text-gray-400 mt-1">Drafts</div>
                 </div>
@@ -130,19 +131,57 @@ export default async function ProfilePage() {
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-2xl font-bold mb-4">📝 Recent Articles</h2>
                 <div class="space-y-4">
-                    ${articles.length > 0 ? 
-                        articles.slice(0, 5).map(article => ArticleCard(article)).join('') : 
+                    ${paginatedArticles.length > 0 ? 
+                        paginatedArticles.map(article => ArticleCard(article)).join('') : 
                         '<div class="text-center py-8 text-gray-400">No articles yet. Create your first article!</div>'
                     }
                 </div>
-                ${articles.length > 5 ? `
+                ${renderPagination(currentPage, totalPages)}
+                ${allArticles.length > PAGINATION.PROFILE_ARTICLES_LIMIT ? `
                     <div class="text-center mt-4">
                         <a href="/admin/articles" class="text-blue-400 hover:text-blue-300 transition">
-                            View all ${articles.length} articles →
+                            View all ${allArticles.length} articles →
                         </a>
                     </div>
                 ` : ''}
             </div>
+        </div>
+    `;
+    
+    attachPaginationEvents(onPageChange);
+}
+
+export default async function ProfilePage() {
+    const state = getState();
+    const user = state.currentUser;
+    
+    if (!user) {
+        window.router.navigate('/login');
+        return '<div class="text-center py-12">Redirecting to login...</div>';
+    }
+    
+    const userId = user._id || user.id;
+    
+    let articles = [];
+    try {
+        const articlesData = await getUserArticles(userId);
+        articles = articlesData.articles || [];
+    } catch (error) {
+        console.error('Error loading articles:', error);
+    }
+    
+    currentUser = user;
+    currentArticles = articles;
+    currentPage = 1;
+    
+    // Рендерим контент сразу
+    setTimeout(() => {
+        renderProfilePage(currentUser, currentArticles);
+    }, 0);
+    
+    return `
+        <div id="profile-content" class="mx-auto">
+            <div class="text-center py-12">Loading profile...</div>
         </div>
     `;
 }
