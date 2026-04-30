@@ -15,7 +15,7 @@ export default function Header() {
                         </svg>
                     </button>
                     <a href="/" class="text-xl font-bold hover:text-blue-400 transition">
-                        📚 Knowledge Base
+                        📚 База знаний
                     </a>
                 </div>
                 <div class="flex items-center gap-x-2" id="header-user-section">
