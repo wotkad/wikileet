@@ -7,10 +7,10 @@ export default function ArticleCard(article) {
     const readTime = article.readTime || calculateReadTime(article.content);
     const author = article.author || {};
     const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : UPLOAD.DEFAULT_AVATAR;
-    const authorName = author.name || author.email || 'Неизвестно';
+    const authorName = author.name || author.email || 'Нет автора';
     const authorSlug = author.slug;
     
-    const hasValidAuthor = authorSlug && authorName !== 'Неизвестно';
+    const hasValidAuthor = authorSlug && authorName !== 'Нет автора';
     // Показываем только первые N тегов
     const visibleTags = article.tags?.slice(0, DISPLAY.MAX_TAGS_IN_CARD) || [];
     

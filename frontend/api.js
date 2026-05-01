@@ -108,6 +108,12 @@ export async function getArticles(params = {}) {
     if (params.author) {
         queryParams.append('author', params.author);
     }
+    if (params.dateFrom) {
+        queryParams.append('dateFrom', params.dateFrom);
+    }
+    if (params.dateTo) {
+        queryParams.append('dateTo', params.dateTo);
+    }
     
     const queryString = queryParams.toString();
     const url = `/articles${queryString ? `?${queryString}` : ''}`;

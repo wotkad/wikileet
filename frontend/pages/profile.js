@@ -17,7 +17,7 @@ function onPageChange(page) {
     renderProfilePage();
 }
 
-// Загрузка избранных статей с сервера
+// Загрузка избранных статей с сервера (уже populated)
 async function loadFavoritesList() {
     try {
         const response = await fetch('/api/favorites', {
@@ -45,7 +45,6 @@ function renderFavoritesList() {
         return '<div class="text-center py-8 text-gray-400">Нет избранных статей. Нажмите на звездочку у статей, чтобы добавить их!</div>';
     }
     
-    // Передаём весь объект статьи, теги будут отображаться через ArticleCard
     return paginatedFavorites.map(article => ArticleCard(article)).join('');
 }
 
@@ -295,16 +294,23 @@ export default async function ProfilePage() {
     currentPage = 1;
     favoritesPage = 1;
     
+    // Загружаем избранное
     await loadFavorites();
     await loadFavoritesList();
     
-    // Подписываемся на обновление избранного
-    if (!window.favoritesEventListener) {
-        window.favoritesEventListener = true;
-        window.addEventListener('favorites:updated', async () => {
-            await refreshFavoritesList();
-        });
+    // Удаляем старый обработчик, если есть
+    if (window.favoritesEventListener) {
+        window.removeEventListener('favorites:updated', window.favoritesEventListener);
     }
+    
+    // Создаём новый обработчик
+    window.favoritesEventListener = async () => {
+        console.log('[ProfilePage] Обновление избранного');
+        await refreshFavoritesList();
+    };
+    
+    // Подписываемся на обновление избранного
+    window.addEventListener('favorites:updated', window.favoritesEventListener);
     
     setTimeout(() => {
         renderProfilePage();
