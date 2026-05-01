@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    favorites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Article'
+    }],
 });
 
 // Генерация slug перед сохранением

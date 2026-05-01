@@ -3,6 +3,7 @@ import { getState } from '../state.js';
 import { getArticles, getCategories, getTags } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { PAGINATION } from '../constants.js';
+import { loadFavorites } from '../components/FavoriteButton.js';
 
 export default async function HomePage() {
     const state = getState();
@@ -18,14 +19,18 @@ export default async function HomePage() {
         tags = await getTags();
     }
     
-    const recentArticles = await getArticles({ 
-        sort: '-createdAt', 
-        limit: PAGINATION.HOME_RECENT_LIMIT 
-    });
-    const popularArticles = await getArticles({ 
-        sort: '-views', 
-        limit: PAGINATION.HOME_POPULAR_LIMIT 
-    });
+    const [recentData, popularData] = await Promise.all([
+        getArticles({ sort: '-createdAt', limit: PAGINATION.HOME_RECENT_LIMIT }),
+        getArticles({ sort: '-views', limit: PAGINATION.HOME_POPULAR_LIMIT })
+    ]);
+    
+    // Загружаем избранное для авторизованных пользователей
+    if (state.currentUser) {
+        await loadFavorites();
+    }
+    
+    const recentArticles = recentData.articles || [];
+    const popularArticles = popularData.articles || [];
 
     return `
         <div class="mx-auto space-y-8">
@@ -61,8 +66,8 @@ export default async function HomePage() {
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🆕 Последние записи</h2>
                     <div class="space-y-4">
-                        ${recentArticles.articles && recentArticles.articles.length > 0 ? 
-                            recentArticles.articles.map(article => ArticleCard(article)).join('') : 
+                        ${recentArticles.length > 0 ? 
+                            recentArticles.map(article => ArticleCard(article)).join('') : 
                             '<div class="text-gray-400 text-center py-8">Нет записей</div>'
                         }
                     </div>
@@ -71,9 +76,9 @@ export default async function HomePage() {
                 <div>
                     <h2 class="text-2xl font-bold mb-4">🔥 Популярные записи</h2>
                     <div class="space-y-4">
-                        ${popularArticles.articles && popularArticles.articles.length > 0 ? 
-                            popularArticles.articles.map(article => ArticleCard(article)).join('') : 
-                            '<div class="text-gray-400 text-center py-8">No articles yet</div>'
+                        ${popularArticles.length > 0 ? 
+                            popularArticles.map(article => ArticleCard(article)).join('') : 
+                            '<div class="text-gray-400 text-center py-8">Нет записей</div>'
                         }
                     </div>
                 </div>

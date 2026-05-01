@@ -3,28 +3,67 @@ import { getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION, UPLOAD, USER_ROLES } from '../constants.js';
+import { PAGINATION } from '../constants.js';
+import { loadFavorites } from '../components/FavoriteButton.js';
 
 let currentPage = 1;
+let favoritesPage = 1;
 let currentUser = null;
 let currentArticles = [];
+let favoritesList = [];
 
 function onPageChange(page) {
     currentPage = page;
-    renderProfilePage(currentUser, currentArticles);
+    renderProfilePage();
 }
 
-function renderProfilePage(user, allArticles) {
+// Загрузка избранных статей с сервера
+async function loadFavoritesList() {
+    try {
+        const response = await fetch('/api/favorites', {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch favorites');
+        const favorites = await response.json();
+        favoritesList = favorites || [];
+        return favoritesList;
+    } catch (error) {
+        console.error('Ошибка загрузки избранного:', error);
+        favoritesList = [];
+        return [];
+    }
+}
+
+// Рендер списка избранного
+function renderFavoritesList() {
+    const limit = PAGINATION.PROFILE_ARTICLES_LIMIT;
+    const start = (favoritesPage - 1) * limit;
+    const end = start + limit;
+    const paginatedFavorites = favoritesList.slice(start, end);
+    
+    if (paginatedFavorites.length === 0) {
+        return '<div class="text-center py-8 text-gray-400">Нет избранных статей. Нажмите на звездочку у статей, чтобы добавить их!</div>';
+    }
+    
+    // Передаём весь объект статьи, теги будут отображаться через ArticleCard
+    return paginatedFavorites.map(article => ArticleCard(article)).join('');
+}
+
+async function renderProfilePage() {
+    const container = document.getElementById('profile-content');
+    if (!container) return;
+    
+    const user = currentUser;
+    const allArticles = currentArticles;
+    
     const start = (currentPage - 1) * PAGINATION.PROFILE_ARTICLES_LIMIT;
     const end = start + PAGINATION.PROFILE_ARTICLES_LIMIT;
     const paginatedArticles = allArticles.slice(start, end);
     const totalPages = Math.ceil(allArticles.length / PAGINATION.PROFILE_ARTICLES_LIMIT);
-    
-    const container = document.getElementById('profile-content');
-    if (!container) return;
+    const favoritesTotalPages = Math.ceil(favoritesList.length / PAGINATION.PROFILE_ARTICLES_LIMIT);
     
     const registeredDate = formatDate(user.createdAt);
-    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : UPLOAD.DEFAULT_AVATAR;
+    const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
     
     container.innerHTML = `
         <div class="mx-auto">
@@ -38,13 +77,13 @@ function renderProfilePage(user, allArticles) {
                                  id="avatar-preview">
                             <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition">
                                 <button type="button" id="upload-avatar-btn" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700 transition">
-                                    Change
+                                    Изменить
                                 </button>
                             </div>
                         </div>
                         <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden">
                         <button type="button" id="remove-avatar-btn" class="text-sm text-red-400 hover:text-red-300 transition ${!user?.avatar ? 'hidden' : ''}">
-                            Remove avatar
+                            Удалить аватар
                         </button>
                     </div>
                     <div>
@@ -52,7 +91,7 @@ function renderProfilePage(user, allArticles) {
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
-                                ${user.role === 'admin' ? USER_ROLES.ADMIN : USER_ROLES.USER}
+                                ${user.role === 'admin' ? '👑 Администратор' : '📖 Пользователь'}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
                                 📅 Зарегистрирован: ${registeredDate}
@@ -76,13 +115,13 @@ function renderProfilePage(user, allArticles) {
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
-                        Update Profile
+                        Обновить профиль
                     </button>
                 </form>
             </div>
             
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-2xl font-bold mb-4">🔒 Изменить пароль</h2>
+                <h2 class="text-2xl font-bold mb-4">🔒 Сменить пароль</h2>
                 <form id="changePasswordForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Текущий пароль</label>
@@ -100,7 +139,7 @@ function renderProfilePage(user, allArticles) {
                                class="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
-                        Change Password
+                        Сменить пароль
                     </button>
                 </form>
             </div>
@@ -108,13 +147,13 @@ function renderProfilePage(user, allArticles) {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-blue-400">${allArticles.length}</div>
-                    <div class="text-gray-400 mt-1">Всего записей</div>
+                    <div class="text-gray-400 mt-1">Написано статей</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-green-400">
                         ${allArticles.filter(a => a.status === 'published').length}
                     </div>
-                    <div class="text-gray-400 mt-1">Опубликованные записи</div>
+                    <div class="text-gray-400 mt-1">Опубликовано</div>
                 </div>
                 <div class="bg-gray-800 rounded-lg p-6 text-center">
                     <div class="text-3xl font-bold text-yellow-400">
@@ -124,27 +163,112 @@ function renderProfilePage(user, allArticles) {
                 </div>
             </div>
             
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-2xl font-bold mb-4">📝 Последние записи</h2>
+            <div class="bg-gray-800 rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold mb-4">📝 Недавние статьи</h2>
                 <div class="space-y-4">
                     ${paginatedArticles.length > 0 ? 
                         paginatedArticles.map(article => ArticleCard(article)).join('') : 
-                        '<div class="text-center py-8 text-gray-400">Нет записей</div>'
+                        '<div class="text-center py-8 text-gray-400">Нет статей. Создайте свою первую статью!</div>'
                     }
                 </div>
                 ${renderPagination(currentPage, totalPages)}
-                ${allArticles.length > PAGINATION.PROFILE_ARTICLES_LIMIT ? `
-                    <div class="text-center mt-4">
-                        <a href="/admin/articles" class="text-blue-400 hover:text-blue-300 transition">
-                            Посмотреть все ${allArticles.length} записи →
-                        </a>
-                    </div>
-                ` : ''}
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-2xl font-bold mb-4">⭐ Избранные статьи</h2>
+                <div class="space-y-4" id="favorites-list">
+                    ${renderFavoritesList()}
+                </div>
+                ${renderPagination(favoritesPage, favoritesTotalPages)}
             </div>
         </div>
     `;
     
     attachPaginationEvents(onPageChange);
+    
+    // Привязываем события пагинации для избранного
+    const favoriteContainer = document.querySelector('.bg-gray-800.rounded-lg.p-6:last-child');
+    if (favoriteContainer) {
+        const favoritePageButtons = favoriteContainer.querySelectorAll('.page-btn');
+        const favoritePrevBtn = favoriteContainer.querySelector('.page-prev');
+        const favoriteNextBtn = favoriteContainer.querySelector('.page-next');
+        
+        favoritePageButtons.forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => {
+                favoritesPage = parseInt(newBtn.dataset.page);
+                renderProfilePage();
+            });
+        });
+        
+        if (favoritePrevBtn && !favoritePrevBtn.disabled) {
+            const newPrevBtn = favoritePrevBtn.cloneNode(true);
+            favoritePrevBtn.parentNode.replaceChild(newPrevBtn, favoritePrevBtn);
+            newPrevBtn.addEventListener('click', () => {
+                favoritesPage = parseInt(newPrevBtn.dataset.page);
+                renderProfilePage();
+            });
+        }
+        
+        if (favoriteNextBtn && !favoriteNextBtn.disabled) {
+            const newNextBtn = favoriteNextBtn.cloneNode(true);
+            favoriteNextBtn.parentNode.replaceChild(newNextBtn, favoriteNextBtn);
+            newNextBtn.addEventListener('click', () => {
+                favoritesPage = parseInt(newNextBtn.dataset.page);
+                renderProfilePage();
+            });
+        }
+    }
+}
+
+// Функция для обновления списка избранного
+async function refreshFavoritesList() {
+    await loadFavoritesList();
+    const favoritesContainer = document.getElementById('favorites-list');
+    if (favoritesContainer) {
+        favoritesContainer.innerHTML = renderFavoritesList();
+    }
+    // Обновляем пагинацию избранного
+    const favoriteContainerEl = document.querySelector('.bg-gray-800.rounded-lg.p-6:last-child');
+    if (favoriteContainerEl) {
+        const newFavoritesTotalPages = Math.ceil(favoritesList.length / PAGINATION.PROFILE_ARTICLES_LIMIT);
+        const paginationContainer = favoriteContainerEl.querySelector('.flex.justify-center');
+        if (paginationContainer && newFavoritesTotalPages > 1) {
+            const newPagination = renderPagination(favoritesPage, newFavoritesTotalPages);
+            paginationContainer.outerHTML = newPagination;
+            const newButtons = favoriteContainerEl.querySelectorAll('.page-btn');
+            const newPrev = favoriteContainerEl.querySelector('.page-prev');
+            const newNext = favoriteContainerEl.querySelector('.page-next');
+            
+            newButtons.forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
+                    favoritesPage = parseInt(newBtn.dataset.page);
+                    renderProfilePage();
+                });
+            });
+            if (newPrev) {
+                const newPrevBtn = newPrev.cloneNode(true);
+                newPrev.parentNode.replaceChild(newPrevBtn, newPrev);
+                newPrevBtn.addEventListener('click', () => {
+                    favoritesPage = parseInt(newPrevBtn.dataset.page);
+                    renderProfilePage();
+                });
+            }
+            if (newNext) {
+                const newNextBtn = newNext.cloneNode(true);
+                newNext.parentNode.replaceChild(newNextBtn, newNext);
+                newNextBtn.addEventListener('click', () => {
+                    favoritesPage = parseInt(newNextBtn.dataset.page);
+                    renderProfilePage();
+                });
+            }
+        } else if (paginationContainer && newFavoritesTotalPages <= 1) {
+            paginationContainer.remove();
+        }
+    }
 }
 
 export default async function ProfilePage() {
@@ -153,7 +277,7 @@ export default async function ProfilePage() {
     
     if (!user) {
         window.router.navigate('/login');
-        return '<div class="text-center py-12">Redirecting to login...</div>';
+        return '<div class="text-center py-12">Перенаправление на вход...</div>';
     }
     
     const userId = user._id || user.id;
@@ -163,21 +287,32 @@ export default async function ProfilePage() {
         const articlesData = await getUserArticles(userId);
         articles = articlesData.articles || [];
     } catch (error) {
-        console.error('Error loading articles:', error);
+        console.error('Ошибка загрузки статей:', error);
     }
     
     currentUser = user;
     currentArticles = articles;
     currentPage = 1;
+    favoritesPage = 1;
     
-    // Рендерим контент сразу
+    await loadFavorites();
+    await loadFavoritesList();
+    
+    // Подписываемся на обновление избранного
+    if (!window.favoritesEventListener) {
+        window.favoritesEventListener = true;
+        window.addEventListener('favorites:updated', async () => {
+            await refreshFavoritesList();
+        });
+    }
+    
     setTimeout(() => {
-        renderProfilePage(currentUser, currentArticles);
+        renderProfilePage();
     }, 0);
     
     return `
         <div id="profile-content" class="mx-auto">
-            <div class="text-center py-12">Loading profile...</div>
+            <div class="text-center py-12">Загрузка профиля...</div>
         </div>
     `;
 }
