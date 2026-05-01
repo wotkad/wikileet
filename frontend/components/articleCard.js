@@ -46,7 +46,7 @@ export default function ArticleCard(article) {
                     </span>
                 ` : ''}
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTime} мин чтения</span>
+                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTime} мин</span>
                 ${hasValidAuthor ? `
                     <a href="/profile/${authorSlug}" class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 transition">
                         <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">

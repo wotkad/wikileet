@@ -6,6 +6,66 @@ import { PAGINATION, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
 import { loadFavorites } from '../components/FavoriteButton.js';
 
+let readingProgressInterval = null;
+
+// Функция для парсинга Markdown в HTML
+function parseMarkdown(content) {
+    if (!content) return '';
+    // Используем глобальный marked если доступен
+    if (typeof marked !== 'undefined') {
+        return marked.parse(content);
+    }
+    // Fallback: просто экранируем HTML и заменяем переносы строк
+    return escapeHtml(content).replace(/\n/g, '<br>');
+}
+
+// Функция для обновления прогресса чтения
+function updateReadingProgress() {
+    const proseElement = document.querySelector('.prose');
+    const progressBar = document.getElementById('reading-progress-bar');
+    const progressContainer = document.getElementById('reading-progress-container');
+    
+    if (!proseElement || !progressBar) return;
+    
+    const scrollContainer = document.querySelector('.main-content-area');
+    if (!scrollContainer) return;
+    
+    const proseHeight = proseElement.offsetHeight;
+    const scrollTop = scrollContainer.scrollTop;
+    const containerHeight = scrollContainer.clientHeight;
+    const maxScroll = proseHeight - containerHeight;
+    
+    if (maxScroll <= 0) {
+        progressBar.style.width = '0%';
+        return;
+    }
+    
+    const percent = Math.min(100, Math.max(0, (scrollTop / maxScroll) * 100));
+    progressBar.style.width = `${percent}%`;
+    
+    if (scrollTop > 100) {
+        progressContainer.classList.remove('opacity-0', 'translate-y-full');
+        progressContainer.classList.add('opacity-100', 'translate-y-0');
+    } else {
+        progressContainer.classList.remove('opacity-100', 'translate-y-0');
+        progressContainer.classList.add('opacity-0', 'translate-y-full');
+    }
+}
+
+function initReadingProgress() {
+    const scrollContainer = document.querySelector('.main-content-area');
+    if (!scrollContainer) return;
+    
+    if (readingProgressInterval) {
+        clearInterval(readingProgressInterval);
+    }
+    
+    scrollContainer.addEventListener('scroll', updateReadingProgress);
+    window.addEventListener('resize', updateReadingProgress);
+    
+    setTimeout(updateReadingProgress, 100);
+}
+
 export default async function ArticlePage(params) {
     try {
         const state = getState();
@@ -20,7 +80,6 @@ export default async function ArticlePage(params) {
             `;
         }
         
-        // Загружаем избранное для авторизованных пользователей
         if (state.currentUser) {
             await loadFavorites();
         }
@@ -30,11 +89,22 @@ export default async function ArticlePage(params) {
         const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : UPLOAD.DEFAULT_AVATAR;
         const isLoggedIn = !!state.currentUser;
         
-        // Обрезаем похожие статьи до лимита
+        // Парсим Markdown в HTML
+        const parsedContent = parseMarkdown(article.content);
+        
         const similarArticles = (similar || []).slice(0, PAGINATION.SIMILAR_ARTICLES_LIMIT);
         
+        setTimeout(initReadingProgress, 100);
+        
         return `
-            <article class="mx-auto">
+            <article class="mx-auto relative">
+                <!-- Прогресс-бар чтения -->
+                <div id="reading-progress-container" class="fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 transform translate-y-full opacity-0">
+                    <div class="h-1 bg-gray-700 w-full">
+                        <div id="reading-progress-bar" class="h-full bg-blue-500 transition-all duration-200" style="width: 0%;"></div>
+                    </div>
+                </div>
+                
                 <div class="flex justify-between items-start mb-4">
                     <a href="/wiki" class="inline-block text-blue-400 hover:text-blue-300 transition">
                         ← Назад к записям
@@ -71,7 +141,7 @@ export default async function ArticlePage(params) {
                     </div>
                     
                     <div class="prose max-w-none">
-                        ${article.content}
+                        ${parsedContent}
                     </div>
                 </div>
                 

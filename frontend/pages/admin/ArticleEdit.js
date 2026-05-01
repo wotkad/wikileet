@@ -39,7 +39,7 @@ export default async function ArticleEditPage(params) {
     
     const currentStatus = article?.status || 'draft';
     const currentAuthor = article?.author?._id || '';
-    const currentPublishDate = article?.publishedAt ? formatDate(article.publishedAt) : '';
+    const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
     
     return `
         <div class="mx-auto">
@@ -63,12 +63,12 @@ export default async function ArticleEditPage(params) {
                         <label class="block text-sm font-medium mb-2">Ссылка</label>
                         <input type="text" 
                                id="slug" 
-                               placeholder="Leave empty to auto-generate from title"
+                               placeholder="Оставьте пустым для автоматической генерации"
                                pattern="[a-z0-9-]+"
-                               title="Only lowercase letters, numbers, and hyphens"
+                               title="Только буквы, цифры и дефисы"
                                value="${escapeHtml(article?.slug || '')}"
                                class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">Оставьте поле пустым, чтобы заголовок генерировался автоматически из заголовка</p>
+                        <p class="text-xs text-gray-500 mt-1">Оставьте поле пустым, чтобы ссылка генерировалась автоматически из заголовка</p>
                         ${!isEdit ? '<p class="text-xs text-green-500 mt-1">✓ Автоматически генерируется из заголовка, если поле оставлено пустым</p>' : '<p class="text-xs text-yellow-500 mt-1">⚠️ Изменение параметра slug приведет к изменению URL статьи.</p>'}
                     </div>
                 </div>
@@ -82,18 +82,17 @@ export default async function ArticleEditPage(params) {
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">Контент *</label>
+                    <label class="block text-sm font-medium mb-2">Контент * (поддерживается Markdown)</label>
                     <textarea id="content" 
                               rows="15"
-                              required
-                              class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${escapeHtml(article?.content || '')}</textarea>
+                              class="w-full px-4 py-2 bg-gray-800 rounded-lg">${escapeHtml(article?.content || '')}</textarea>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium mb-2">Категория *</label>
                         <select id="category" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select a category</option>
+                            <option value="">Выберите категорию</option>
                             ${categories.map(cat => `
                                 <option value="${cat._id}" ${article?.category?._id === cat._id ? 'selected' : ''}>
                                     ${escapeHtml(cat.name)}
@@ -139,7 +138,7 @@ export default async function ArticleEditPage(params) {
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium mb-2">Дата</label>
+                        <label class="block text-sm font-medium mb-2">Дата публикации</label>
                         <input type="datetime-local" 
                                id="publishDate" 
                                value="${currentPublishDate}"
@@ -165,18 +164,24 @@ function initMarkdownEditor(isNew = false) {
     const textarea = document.getElementById('content');
     if (!textarea) return;
     
+    console.log('Initializing Markdown editor, isNew:', isNew);
+    
     if (window.simplemde && window.simplemdeInitialized) {
         try {
             window.simplemde.toTextArea();
             window.simplemde = null;
             window.simplemdeInitialized = false;
-        } catch(e) {}
+        } catch(e) {
+            console.error('Error destroying old editor:', e);
+        }
     }
     
+    // Очищаем autosave для новой статьи
     if (isNew) {
         localStorage.removeItem('smde_article_content');
     }
     
+    // Загружаем CSS если ещё не загружен
     if (!document.querySelector('link[href*="simplemde"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -184,21 +189,35 @@ function initMarkdownEditor(isNew = false) {
         document.head.appendChild(link);
     }
     
+    // Загружаем SimpleMDE скрипт
     if (typeof window.SimpleMDE === 'undefined') {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js';
         script.onload = () => {
+            console.log('SimpleMDE script loaded');
             createSimpleMDE(textarea, isNew);
+        };
+        script.onerror = () => {
+            console.error('Failed to load SimpleMDE script');
         };
         document.head.appendChild(script);
     } else {
+        console.log('SimpleMDE already loaded');
         createSimpleMDE(textarea, isNew);
     }
 }
 
 function createSimpleMDE(textarea, isNew = false) {
+    // Даем время на загрузку DOM
     setTimeout(() => {
         try {
+            // Убеждаемся, что textarea всё ещё на месте
+            if (!document.getElementById('content')) {
+                console.error('Textarea not found');
+                return;
+            }
+            
+            // Очищаем autosave для новой статьи
             if (isNew && (!textarea.value || textarea.value.trim() === '')) {
                 localStorage.removeItem('smde_article_content');
             }
@@ -218,8 +237,17 @@ function createSimpleMDE(textarea, isNew = false) {
                     "preview", "side-by-side", "fullscreen", "|",
                     "guide"
                 ],
-                placeholder: "Write your article content here using Markdown...",
+                placeholder: "Введите текст статьи здесь...\n\n# Заголовок\n\n**Жирный текст**\n\n*Курсив*\n\n- Список\n- Элементы",
                 status: ["lines", "words", "cursor"],
+                renderingConfig: {
+                    singleLineBreaks: false,
+                    codeSyntaxHighlighting: true,
+                },
+            });
+            
+            // Обновляем значение в textarea при изменении
+            window.simplemde.codemirror.on('change', () => {
+                textarea.value = window.simplemde.value();
             });
             
             if (isNew && window.simplemde.value() === '') {
@@ -227,6 +255,7 @@ function createSimpleMDE(textarea, isNew = false) {
             }
             
             window.simplemdeInitialized = true;
+            console.log('SimpleMDE initialized successfully');
         } catch(e) {
             console.error('Error initializing SimpleMDE:', e);
         }
@@ -238,9 +267,12 @@ window.initArticleEdit = async function(slug) {
     const isNew = !isEdit;
     const oldSlug = isEdit ? slug : null;
     
+    console.log('Initializing article edit, isEdit:', isEdit, 'slug:', slug);
+    
+    // Инициализируем Markdown редактор с задержкой для полной загрузки DOM
     setTimeout(() => {
         initMarkdownEditor(isNew);
-    }, 100);
+    }, 200);
     
     const slugInput = document.getElementById('slug');
     if (slugInput) {
@@ -251,6 +283,22 @@ window.initArticleEdit = async function(slug) {
             value = value.replace(/^-+|-+$/g, '');
             this.value = value;
         });
+    }
+    
+    // Автогенерация slug из заголовка для новых статей
+    if (isNew) {
+        const titleInput = document.getElementById('title');
+        if (titleInput) {
+            titleInput.addEventListener('input', function() {
+                const slugField = document.getElementById('slug');
+                if (slugField && !slugField.value) {
+                    const generatedSlug = generateSlug(this.value);
+                    if (generatedSlug) {
+                        slugField.value = generatedSlug;
+                    }
+                }
+            });
+        }
     }
     
     const form = document.getElementById('articleForm');
@@ -275,25 +323,25 @@ window.initArticleEdit = async function(slug) {
             const tags = Array.from(tagCheckboxes).map(cb => cb.value);
             
             if (!title) {
-                window.toast?.warning('Please enter a title');
+                window.toast?.warning('Пожалуйста, введите заголовок');
                 document.getElementById('title').focus();
                 return;
             }
             
             if (!description) {
-                window.toast?.warning('Please enter a description');
+                window.toast?.warning('Пожалуйста, введите описание');
                 document.getElementById('description').focus();
                 return;
             }
             
             if (!category) {
-                window.toast?.warning('Please select a category');
+                window.toast?.warning('Пожалуйста, выберите категорию');
                 document.getElementById('category').focus();
                 return;
             }
             
             if (!content) {
-                window.toast?.warning('Please enter content');
+                window.toast?.warning('Пожалуйста, введите содержание');
                 if (window.simplemde) {
                     window.simplemde.codemirror.focus();
                 }
@@ -303,30 +351,30 @@ window.initArticleEdit = async function(slug) {
             if (!formSlug) {
                 formSlug = generateSlug(title);
                 if (!formSlug) {
-                    window.toast?.warning('Please enter a title');
+                    window.toast?.warning('Пожалуйста, введите заголовок');
                     return;
                 }
             }
             
             if (!isValidSlug(formSlug)) {
-                window.toast?.error('Slug can only contain lowercase letters, numbers, and hyphens');
+                window.toast?.error('Slug может содержать только буквы, цифры и дефисы');
                 document.getElementById('slug').focus();
                 return;
             }
             
             let publishedAt = null;
             if (publishDate) {
-                publishedAt = formatDate(publishDate);
+                publishedAt = new Date(publishDate);
             } else if (status === 'published') {
-                publishedAt = formatDate;
+                publishedAt = new Date();
             }
             
             if (isEdit && oldSlug && formSlug !== oldSlug) {
                 const confirmed = await showConfirmDialog(
-                    'Change Slug?',
-                    `You are changing the slug from "${oldSlug}" to "${formSlug}".\n\nThis will break any existing links to this article. Are you sure?`,
-                    'Continue',
-                    'Cancel'
+                    'Изменить ссылку?',
+                    `Вы меняете ссылку с "${oldSlug}" на "${formSlug}".\n\nЭто приведет к поломке существующих ссылок на эту статью. Вы уверены?`,
+                    'Продолжить',
+                    'Отмена'
                 );
                 if (!confirmed) return;
             }
@@ -347,16 +395,16 @@ window.initArticleEdit = async function(slug) {
                 
                 if (isEdit) {
                     result = await updateArticle(oldSlug, articleData);
-                    window.toast?.success(`Article "${title}" updated successfully`);
+                    window.toast?.success(`Статья "${title}" успешно обновлена`);
                 } else {
                     result = await createArticle(articleData);
-                    window.toast?.success(`Article "${title}" created successfully`);
+                    window.toast?.success(`Статья "${title}" успешно создана`);
                 }
                 
                 window.router.navigate(`/admin/articles`);
             } catch (error) {
                 console.error('Error saving article:', error);
-                window.toast?.error('Error saving article: ' + error.message);
+                window.toast?.error('Ошибка сохранения статьи: ' + error.message);
             }
         };
     }
