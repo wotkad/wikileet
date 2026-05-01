@@ -322,3 +322,30 @@ export default async function ProfilePage() {
         </div>
     `;
 }
+
+export async function initProfilePage() {
+    const state = getState();
+    const user = state.currentUser;
+    
+    if (!user) return;
+    
+    const userId = user._id || user.id;
+    
+    let articles = [];
+    try {
+        const articlesData = await getUserArticles(userId);
+        articles = articlesData.articles || [];
+    } catch (error) {
+        console.error('Ошибка загрузки статей:', error);
+    }
+    
+    currentUser = user;
+    currentArticles = articles;
+    currentPage = 1;
+    favoritesPage = 1;
+    
+    await loadFavorites();
+    await loadFavoritesList();
+    
+    renderProfilePage();
+}

@@ -261,8 +261,17 @@ const router = {
                 }
             }, 50);
         } else if (path === '/profile') {
-            setTimeout(() => {
-                console.log('Initializing profile components');
+            // Очищаем предыдущий профиль
+            const profileContent = document.getElementById('profile-content');
+            if (profileContent) {
+                profileContent.innerHTML = '<div class="text-center py-12">Загрузка профиля...</div>';
+            }
+            setTimeout(async () => {
+                // Импортируем функцию инициализации профиля
+                const { initProfilePage } = await import('../pages/profile.js');
+                if (typeof initProfilePage === 'function') {
+                    await initProfilePage();
+                }
                 initAvatarUpload();
                 initProfileForms();
                 profileInitialized = true;
