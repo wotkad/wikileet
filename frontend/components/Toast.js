@@ -12,7 +12,7 @@ class Toast {
         if (!document.getElementById('toast-container')) {
             const container = document.createElement('div');
             container.id = 'toast-container';
-            container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+            container.className = 'fixed flex flex-col items-end bottom-4 right-4 z-50 space-y-2';
             document.body.appendChild(container);
             this.container = container;
         } else {

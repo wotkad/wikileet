@@ -1,6 +1,7 @@
 import { PAGINATION, SEARCH, UPLOAD, USER_ROLES } from '../constants.js';
 import { escapeHtml, debounce, formatDate } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
+import { renderSearchInput, initSearchInput } from '../components/Search.js';
 
 let currentFilters = {
     search: '',
@@ -10,14 +11,13 @@ let currentFilters = {
     limit: PAGINATION.USERS_LIMIT
 };
 
-// Функция для обновления только контента (список пользователей, пагинация)
+// Функция для обновления только контента
 async function updateUsersContent() {
     const [usersData, stats] = await Promise.all([
         getUsers(currentFilters),
         getUserStats()
     ]);
     
-    // Обновляем статистику
     const statsContainer = document.querySelector('.stats-container');
     if (statsContainer) {
         statsContainer.innerHTML = `
@@ -38,13 +38,11 @@ async function updateUsersContent() {
         `;
     }
     
-    // Обновляем список пользователей
     const usersList = document.getElementById('users-list');
     if (usersList) {
         usersList.innerHTML = renderUsersList(usersData.users);
     }
     
-    // Обновляем пагинацию
     const paginationContainer = document.querySelector('.pagination-container');
     if (paginationContainer) {
         const newPagination = renderPagination(currentFilters.page, usersData.totalPages);
@@ -60,7 +58,6 @@ async function updateUsersContent() {
 function onPageChange(page) {
     currentFilters.page = page;
     
-    // Обновляем URL
     const url = new URL(window.location.href);
     if (page > 1) {
         url.searchParams.set('page', page);
@@ -69,26 +66,24 @@ function onPageChange(page) {
     }
     window.history.pushState({}, '', url);
     
-    // Обновляем контент
     updateUsersContent();
 }
 
-const performSearch = debounce(async () => {
+function onSearch(searchValue) {
+    currentFilters.search = searchValue;
     currentFilters.page = 1;
     
-    // Обновляем URL без перезагрузки страницы
     const url = new URL(window.location.href);
-    if (currentFilters.search) {
-        url.searchParams.set('search', currentFilters.search);
+    if (searchValue) {
+        url.searchParams.set('search', searchValue);
     } else {
         url.searchParams.delete('search');
     }
     url.searchParams.delete('page');
     window.history.pushState({}, '', url);
     
-    // Обновляем контент
-    await updateUsersContent();
-}, SEARCH.DEBOUNCE_DELAY);
+    updateUsersContent();
+}
 
 async function getUsers(filters) {
     const params = new URLSearchParams();
@@ -201,16 +196,16 @@ export default async function UsersPage() {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Поиск по имени</label>
-                        <input type="text" 
-                               id="searchInput" 
-                               placeholder="Введите имя" 
-                               autocomplete="off"
-                               value="${escapeHtml(currentFilters.search)}"
-                               class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        ${renderSearchInput({
+                            id: 'searchInput',
+                            placeholder: 'Введите имя',
+                            initialValue: currentFilters.search,
+                            className: 'w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        })}
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Показать по роли</label>
-                        <select id="roleFilter" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="roleFilter" class="h-10 w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="all" ${currentFilters.role === 'all' ? 'selected' : ''}>Все пользователи</option>
                             <option value="admin" ${currentFilters.role === 'admin' ? 'selected' : ''}>Администраторы</option>
                             <option value="user" ${currentFilters.role === 'user' ? 'selected' : ''}>Пользователи</option>
@@ -218,7 +213,7 @@ export default async function UsersPage() {
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Показать сначала</label>
-                        <select id="sortFilter" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="sortFilter" class="h-10 w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="-createdAt" ${currentFilters.sort === '-createdAt' ? 'selected' : ''}>Самые новые</option>
                             <option value="createdAt" ${currentFilters.sort === 'createdAt' ? 'selected' : ''}>Самые старые</option>
                             <option value="name" ${currentFilters.sort === 'name' ? 'selected' : ''}>От А до Я</option>
@@ -240,30 +235,11 @@ export default async function UsersPage() {
 }
 
 window.initUsersPage = function() {
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        const currentValue = searchInput.value;
-        const newSearchInput = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-        
-        newSearchInput.value = currentValue;
-        
-        newSearchInput.addEventListener('input', (e) => {
-            currentFilters.search = e.target.value;
-            currentFilters.page = 1;
-            performSearch();
-        });
-        
-        newSearchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                performSearch();
-            }
-        });
-        
-        const len = newSearchInput.value.length;
-        newSearchInput.setSelectionRange(len, len);
-    }
+    // Инициализация поиска
+    initSearchInput({
+        id: 'searchInput',
+        onSearch: onSearch
+    });
     
     const roleFilter = document.getElementById('roleFilter');
     if (roleFilter) {
@@ -274,7 +250,6 @@ window.initUsersPage = function() {
             currentFilters.role = e.target.value;
             currentFilters.page = 1;
             
-            // Обновляем URL
             const url = new URL(window.location.href);
             if (currentFilters.role && currentFilters.role !== 'all') {
                 url.searchParams.set('role', currentFilters.role);
@@ -284,7 +259,6 @@ window.initUsersPage = function() {
             url.searchParams.delete('page');
             window.history.pushState({}, '', url);
             
-            // Обновляем контент
             await updateUsersContent();
         });
     }
@@ -298,13 +272,11 @@ window.initUsersPage = function() {
             currentFilters.sort = e.target.value;
             currentFilters.page = 1;
             
-            // Обновляем URL
             const url = new URL(window.location.href);
             url.searchParams.set('sort', currentFilters.sort);
             url.searchParams.delete('page');
             window.history.pushState({}, '', url);
             
-            // Обновляем контент
             await updateUsersContent();
         });
     }

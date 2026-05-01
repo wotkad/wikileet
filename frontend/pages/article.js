@@ -6,16 +6,25 @@ import { PAGINATION, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
 import { loadFavorites } from '../components/FavoriteButton.js';
 
+// Функция для копирования ссылки в буфер обмена
+async function copyToClipboard(text, message) {
+    try {
+        await navigator.clipboard.writeText(text);
+        window.toast?.success(message);
+    } catch (err) {
+        console.error('Ошибка копирования:', err);
+        window.toast?.error('Не удалось скопировать ссылку');
+    }
+}
+
 let readingProgressInterval = null;
 
 // Функция для парсинга Markdown в HTML
 function parseMarkdown(content) {
     if (!content) return '';
-    // Используем глобальный marked если доступен
     if (typeof marked !== 'undefined') {
         return marked.parse(content);
     }
-    // Fallback: просто экранируем HTML и заменяем переносы строк
     return escapeHtml(content).replace(/\n/g, '<br>');
 }
 
@@ -96,6 +105,8 @@ export default async function ArticlePage(params) {
         
         setTimeout(initReadingProgress, 100);
         
+        const articleUrl = `${window.location.origin}/wiki/${article.slug}`;
+        
         return `
             <article class="mx-auto relative">
                 <!-- Прогресс-бар чтения -->
@@ -105,15 +116,19 @@ export default async function ArticlePage(params) {
                     </div>
                 </div>
                 
-                <div class="flex justify-between items-start mb-4">
+                <div class="flex justify-between items-center mb-4">
                     <a href="/wiki" class="inline-block text-blue-400 hover:text-blue-300 transition">
                         ← Назад к записям
                     </a>
-                    ${isLoggedIn ? `
-                        <div class="flex-shrink-0 ml-4">
-                            ${FavoriteButton(article._id)}
-                        </div>
-                    ` : ''}
+                    <div class="flex gap-2">
+                        <button id="copyArticleBtn" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm flex items-center gap-2" data-url="${articleUrl}" data-title="${escapeHtml(article.title)}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            Копировать ссылку
+                        </button>
+                        ${isLoggedIn ? FavoriteButton(article._id) : ''}
+                    </div>
                 </div>
                 
                 <div class="bg-gray-800 rounded-lg p-8">
@@ -165,3 +180,18 @@ export default async function ArticlePage(params) {
         `;
     }
 }
+
+// Обработчик кнопки "Копировать ссылку" на странице статьи
+setTimeout(() => {
+    const copyBtn = document.getElementById('copyArticleBtn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const url = copyBtn.dataset.url;
+            const title = copyBtn.dataset.title;
+            if (url) {
+                await copyToClipboard(url, `Ссылка на "${title}" скопирована!`);
+            }
+        });
+    }
+}, 100);

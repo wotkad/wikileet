@@ -3,6 +3,7 @@ import { escapeHtml, debounce } from '../utils/utils.js';
 import { getArticles, getCategories, getTags, getUsers } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
+import { renderSearchInput, initSearchInput } from '../components/Search.js';
 
 let currentFilters = {
     search: '',
@@ -447,12 +448,12 @@ export default async function WikiPage() {
             </div>
             
             <div class="mb-6">
-                <input type="text" 
-                       id="searchInput" 
-                       placeholder="Введите название или описание" 
-                       autocomplete="off"
-                       class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       value="${escapeHtml(currentFilters.search)}">
+                ${renderSearchInput({
+                    id: 'searchInput',
+                    placeholder: 'Введите название или описание',
+                    initialValue: currentFilters.search,
+                    className: 'w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                })}
             </div>
             
             <div class="grid grid-cols-1 gap-4" id="articles-list">
@@ -504,28 +505,25 @@ function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, d
 }
 
 window.initWikiEvents = function() {
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        const currentValue = searchInput.value;
-        const newSearchInput = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-        
-        newSearchInput.value = currentValue;
-        
-        newSearchInput.addEventListener('input', (e) => {
-            performSearch(e.target.value);
-        });
-        
-        newSearchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                performSearch(e.target.value);
+    // Инициализация поиска
+    initSearchInput({
+        id: 'searchInput',
+        onSearch: (searchValue) => {
+            currentFilters.search = searchValue;
+            currentFilters.page = 1;
+            
+            const url = new URL(window.location.href);
+            if (searchValue && searchValue.trim()) {
+                url.searchParams.set('search', searchValue.trim());
+            } else {
+                url.searchParams.delete('search');
             }
-        });
-        
-        const len = newSearchInput.value.length;
-        newSearchInput.setSelectionRange(len, len);
-    }
+            url.searchParams.delete('page');
+            window.history.pushState({}, '', url);
+            
+            updateWikiContent();
+        }
+    });
     
     // Получаем теги для привязки событий
     getTags().then(tags => {

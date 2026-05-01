@@ -3,6 +3,17 @@ import { DISPLAY, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
 import FavoriteButton from './FavoriteButton.js';
 
+// Функция для копирования ссылки в буфер обмена
+async function copyToClipboard(text, message) {
+    try {
+        await navigator.clipboard.writeText(text);
+        window.toast?.success(message);
+    } catch (err) {
+        console.error('Ошибка копирования:', err);
+        window.toast?.error('Не удалось скопировать ссылку');
+    }
+}
+
 export default function ArticleCard(article) {
     const readTime = article.readTime || calculateReadTime(article.content);
     const author = article.author || {};
@@ -17,17 +28,21 @@ export default function ArticleCard(article) {
     const state = getState();
     const currentUser = state.currentUser;
     const isLoggedIn = !!currentUser;
+    const articleUrl = `${window.location.origin}/wiki/${article.slug}`;
     
     return `
-        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition relative">
-            ${isLoggedIn ? `
-                <div class="absolute top-2 right-2 z-10">
-                    ${FavoriteButton(article._id)}
-                </div>
-            ` : ''}
+        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition relative group">
+            <div class="absolute top-2 right-2 z-10 flex gap-1">
+                <button class="copy-btn p-1 rounded-full transition text-gray-500 hover:text-green-400" data-url="${articleUrl}" data-title="${escapeHtml(article.title)}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                </button>
+                ${isLoggedIn ? FavoriteButton(article._id) : ''}
+            </div>
             
             <a href="/wiki/${article.slug}" class="block">
-                <h3 class="text-lg font-semibold mb-2 pr-8">${escapeHtml(article.title)}</h3>
+                <h3 class="text-lg font-semibold mb-2 pr-16">${escapeHtml(article.title)}</h3>
                 <p class="text-gray-400 text-sm mb-3">${truncateText(escapeHtml(article.description || 'Нет описания'), DISPLAY.TRUNCATE_DESCRIPTION_LENGTH)}</p>
             </a>
             
@@ -63,3 +78,19 @@ export default function ArticleCard(article) {
         </div>
     `;
 }
+
+// Глобальный обработчик для кнопок "Копировать ссылку"
+document.addEventListener('click', async (e) => {
+    const copyBtn = e.target.closest('.copy-btn');
+    if (!copyBtn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = copyBtn.dataset.url;
+    const title = copyBtn.dataset.title;
+    
+    if (url) {
+        await copyToClipboard(url, `Ссылка на "${title}" скопирована!`);
+    }
+});
