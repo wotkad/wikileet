@@ -61,7 +61,7 @@ export default async function ArticleEditPage(params) {
     
     const currentStatus = article?.status || 'draft';
     const currentAuthor = article?.author?._id || '';
-    const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
+    const currentPublishDate = article?.publishedAt ? formatDate(article.publishedAt) : '';
     const previewUrl = isEdit && article?.slug ? `/wiki/${article.slug}` : '#';
     
     return `
