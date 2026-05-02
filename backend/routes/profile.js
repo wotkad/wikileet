@@ -222,19 +222,17 @@ router.get('/user/by-slug/:slug', authMiddleware, async (req, res) => {
     }
 });
 
-// GET /api/profile/users - получение всех пользователей с фильтрацией (ТОЛЬКО ДЛЯ АДМИНОВ)
-router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
+// GET /api/profile/users - получение всех пользователей с фильтрацией (доступно всем)
+router.get('/users', async (req, res) => {
     try {
         const { search, role, sort = '-createdAt', page = 1, limit = 20 } = req.query;
         
         const query = {};
         
-        // Фильтр по роли
         if (role && role !== 'all') {
             query.role = role;
         }
         
-        // Поиск по имени
         if (search && search.trim()) {
             query.name = { $regex: search, $options: 'i' };
         }
@@ -259,8 +257,14 @@ router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
             ]);
             
             return {
-                ...user.toObject(),
-                articlesCount,
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                slug: user.slug,
+                avatar: user.avatar,
+                role: user.role,
+                createdAt: user.createdAt,
+                articlesCount: articlesCount,
                 totalViews: totalViews[0]?.total || 0
             };
         }));
@@ -277,8 +281,8 @@ router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
     }
 });
 
-// GET /api/profile/users/stats - получение статистики по пользователям (ТОЛЬКО ДЛЯ АДМИНОВ)
-router.get('/users/stats', authMiddleware, adminMiddleware, async (req, res) => {
+// GET /api/profile/users/stats - получение статистики по пользователям
+router.get('/users/stats', authMiddleware, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const adminCount = await User.countDocuments({ role: 'admin' });

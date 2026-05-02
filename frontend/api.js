@@ -186,10 +186,8 @@ export async function getTags() {
 }
 
 export async function getUsers() {
-    console.log('Fetching users list');
-    const data = await request('/articles/users');
-    console.log('Users data:', data);
-    return Array.isArray(data) ? data : [];
+    const data = await request('/profile/users');
+    return data?.users || [];
 }
 
 export async function getUserArticles(userId) {

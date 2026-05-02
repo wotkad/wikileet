@@ -1,5 +1,5 @@
 import { PAGINATION, SEARCH, UPLOAD, USER_ROLES } from '../constants.js';
-import { escapeHtml, debounce, formatDate } from '../utils/utils.js';
+import { escapeHtml, debounce, formatDate, getArticlesDeclension, getViewsDeclension } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { renderSearchInput, initSearchInput } from '../components/Search.js';
 
@@ -121,35 +121,40 @@ function renderUsersList(users) {
         return '<div class="text-center py-8 text-gray-400">Пользователей не найдено</div>';
     }
     
-    return users.map(user => `
-        <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
-            <div class="flex items-start gap-4">
-                <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : UPLOAD.DEFAULT_AVATAR}" 
-                     alt="${escapeHtml(user.name)}"
-                     class="w-12 h-12 rounded-full object-cover">
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
-                            ${escapeHtml(user.name)}
-                        </a>
-                        ${user.role === USER_ROLES.ADMIN ? 
-                            '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Администратор</span>' : 
-                            '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Пользователь</span>'
-                        }
+    return users.map(user => {
+        const articlesText = getArticlesDeclension(user.articlesCount || 0);
+        const viewsText = getViewsDeclension(user.totalViews || 0);
+        
+        return `
+            <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
+                <div class="flex items-start gap-4">
+                    <img src="${user.avatar ? `/api/profile/avatar/${user.avatar}` : UPLOAD.DEFAULT_AVATAR}" 
+                         alt="${escapeHtml(user.name)}"
+                         class="w-12 h-12 rounded-full object-cover">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
+                                ${escapeHtml(user.name)}
+                            </a>
+                            ${user.role === USER_ROLES.ADMIN ? 
+                                '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Администратор</span>' : 
+                                '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Пользователь</span>'
+                            }
+                        </div>
+                        <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
+                        <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                            <span>📅 Зарегистрирован: ${formatDate(user.createdAt)}</span>
+                            <span>📝 ${articlesText}</span>
+                            <span>👁️ ${viewsText}</span>
+                        </div>
                     </div>
-                    <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
-                    <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                        <span>📅 Зарегистрирован: ${formatDate(user.createdAt)}</span>
-                        <span>📝 ${user.articlesCount || 0} записей</span>
-                        <span>👁️ ${user.totalViews || 0} просмотров</span>
-                    </div>
+                    <a href="/profile/${user.slug}" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition whitespace-nowrap">
+                        Профиль
+                    </a>
                 </div>
-                <a href="/profile/${user.slug}" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition whitespace-nowrap">
-                    Профиль
-                </a>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 export default async function UsersPage() {

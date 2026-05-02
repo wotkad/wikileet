@@ -5,12 +5,14 @@ import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { PAGINATION } from '../constants.js';
 import { loadFavorites } from '../components/FavoriteButton.js';
+import { initAvatarUpload } from '../components/AvatarUpload.js';
 
 let currentPage = 1;
 let favoritesPage = 1;
 let currentUser = null;
 let currentArticles = [];
 let favoritesList = [];
+let favoritesEventListener = null;
 
 function onPageChange(page) {
     currentPage = page;
@@ -219,6 +221,115 @@ async function renderProfilePage() {
             });
         }
     }
+    
+    // Инициализируем загрузку аватара
+    setTimeout(() => {
+        initAvatarUpload();
+    }, 100);
+    
+    // Инициализируем формы
+    initProfileForms();
+}
+
+// Инициализация форм
+function initProfileForms() {
+    // Форма редактирования профиля
+    const editForm = document.getElementById('editProfileForm');
+    if (editForm) {
+        const newEditForm = editForm.cloneNode(true);
+        editForm.parentNode.replaceChild(newEditForm, editForm);
+        
+        newEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('edit-name').value;
+            const email = document.getElementById('edit-email').value;
+            
+            try {
+                const response = await fetch('/api/profile/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email }),
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Update failed');
+                }
+                
+                const user = await response.json();
+                
+                const { setState } = await import('../state.js');
+                setState({ currentUser: user });
+                
+                const nameDisplay = document.getElementById('user-name-display');
+                const emailDisplay = document.getElementById('user-email-display');
+                if (nameDisplay) nameDisplay.textContent = user.name;
+                if (emailDisplay) emailDisplay.textContent = user.email;
+                
+                const { updateHeaderUser } = await import('../components/Header.js');
+                updateHeaderUser();
+                
+                window.toast?.success('Профиль обновлён!');
+            } catch (error) {
+                console.error('Update error:', error);
+                window.toast?.error(error.message);
+            }
+        });
+    }
+    
+    // Форма смены пароля
+    const passwordForm = document.getElementById('changePasswordForm');
+    if (passwordForm) {
+        const newPasswordForm = passwordForm.cloneNode(true);
+        passwordForm.parentNode.replaceChild(newPasswordForm, passwordForm);
+        
+        newPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (newPassword !== confirmPassword) {
+                window.toast?.warning('Пароли не совпадают');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                window.toast?.warning('Пароль должен быть минимум 6 символов');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile/change-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Password change failed');
+                }
+                
+                const data = await response.json();
+                
+                if (data.user) {
+                    const { setState } = await import('../state.js');
+                    setState({ currentUser: data.user });
+                    const { updateHeaderUser } = await import('../components/Header.js');
+                    updateHeaderUser();
+                }
+                
+                window.toast?.success('Пароль изменён!');
+                newPasswordForm.reset();
+            } catch (error) {
+                console.error('Password change error:', error);
+                window.toast?.error(error.message);
+            }
+        });
+    }
 }
 
 // Функция для обновления списка избранного
@@ -299,18 +410,18 @@ export default async function ProfilePage() {
     await loadFavoritesList();
     
     // Удаляем старый обработчик, если есть
-    if (window.favoritesEventListener) {
-        window.removeEventListener('favorites:updated', window.favoritesEventListener);
+    if (favoritesEventListener) {
+        window.removeEventListener('favorites:updated', favoritesEventListener);
     }
     
     // Создаём новый обработчик
-    window.favoritesEventListener = async () => {
+    favoritesEventListener = async () => {
         console.log('[ProfilePage] Обновление избранного');
         await refreshFavoritesList();
     };
     
     // Подписываемся на обновление избранного
-    window.addEventListener('favorites:updated', window.favoritesEventListener);
+    window.addEventListener('favorites:updated', favoritesEventListener);
     
     setTimeout(() => {
         renderProfilePage();
@@ -323,29 +434,10 @@ export default async function ProfilePage() {
     `;
 }
 
-export async function initProfilePage() {
-    const state = getState();
-    const user = state.currentUser;
-    
-    if (!user) return;
-    
-    const userId = user._id || user.id;
-    
-    let articles = [];
-    try {
-        const articlesData = await getUserArticles(userId);
-        articles = articlesData.articles || [];
-    } catch (error) {
-        console.error('Ошибка загрузки статей:', error);
+// Очистка при уходе со страницы (опционально)
+export function cleanupProfilePage() {
+    if (favoritesEventListener) {
+        window.removeEventListener('favorites:updated', favoritesEventListener);
+        favoritesEventListener = null;
     }
-    
-    currentUser = user;
-    currentArticles = articles;
-    currentPage = 1;
-    favoritesPage = 1;
-    
-    await loadFavorites();
-    await loadFavoritesList();
-    
-    renderProfilePage();
 }

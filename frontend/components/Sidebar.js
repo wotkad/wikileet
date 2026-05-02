@@ -24,6 +24,10 @@ export default function Sidebar() {
                                 <span>👥</span>
                                 <span>Пользователи</span>
                             </a>
+                            <a href="/media" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                                <span>🖼️</span>
+                                <span>Медиатека</span>
+                            </a>
                         ` : ''}
                     </div>
                 </div>

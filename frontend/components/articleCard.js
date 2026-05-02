@@ -1,4 +1,4 @@
-import { escapeHtml, calculateReadTime, truncateText, formatDate } from '../utils/utils.js';
+import { escapeHtml, calculateReadTime, truncateText, formatDate, getMinutesDeclension, getViewsDeclension } from '../utils/utils.js';
 import { DISPLAY, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
 import FavoriteButton from './FavoriteButton.js';
@@ -29,6 +29,8 @@ export default function ArticleCard(article) {
     const currentUser = state.currentUser;
     const isLoggedIn = !!currentUser;
     const articleUrl = `${window.location.origin}/wiki/${article.slug}`;
+    const readTimeText = getMinutesDeclension(readTime);
+    const viewsText = getViewsDeclension(article.views);
     
     return `
         <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition relative group">
@@ -60,8 +62,8 @@ export default function ArticleCard(article) {
                         +${article.tags.length - DISPLAY.MAX_TAGS_IN_CARD}
                     </span>
                 ` : ''}
-                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${article.views || 0}</span>
-                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTime} мин</span>
+                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${viewsText}</span>
+                <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTimeText}</span>
                 ${hasValidAuthor ? `
                     <a href="/profile/${authorSlug}" class="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 transition">
                         <img src="${authorAvatar}" alt="${escapeHtml(authorName)}" class="w-4 h-4 rounded-full object-cover">

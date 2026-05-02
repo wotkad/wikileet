@@ -7,6 +7,7 @@ export const PAGINATION = {
     ADMIN_ARTICLES_LIMIT: 10,
     PROFILE_ARTICLES_LIMIT: 5,
     SIMILAR_ARTICLES_LIMIT: 5,
+    MEDIA_LIMIT: 20,
 };
 
 // Загрузка файлов

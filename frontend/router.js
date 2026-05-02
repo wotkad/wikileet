@@ -13,6 +13,7 @@ import { updateHeaderUser } from './components/Header.js';
 import { initSidebarEvents } from './components/Sidebar.js';
 import { initAvatarUpload } from './components/AvatarUpload.js';
 import UsersPage from './pages/users.js';
+import MediaPage from './pages/media.js';
 
 const routes = {
     '/': HomePage,
@@ -26,6 +27,7 @@ const routes = {
     '/admin/articles/new': ArticleEditPage,
     '/admin/articles/:slug': ArticleEditPage,
     '/users': UsersPage,
+    '/media': MediaPage,
 };
 
 // Функции для инициализации профиля
@@ -227,6 +229,14 @@ const router = {
         if ((path === '/login' || path === '/register') && state.currentUser) {
             this.navigate('/');
             return;
+        }
+
+        if (path === '/media') {
+            setTimeout(() => {
+                if (window.initMediaPage) {
+                    window.initMediaPage();
+                }
+            }, 50);
         }
 
         const content = await Component(params);

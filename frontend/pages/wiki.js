@@ -1,5 +1,5 @@
 import { PAGINATION, SEARCH } from '../constants.js';
-import { escapeHtml, debounce } from '../utils/utils.js';
+import { escapeHtml, debounce, getArticlesDeclension } from '../utils/utils.js';
 import { getArticles, getCategories, getTags, getUsers } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
@@ -26,13 +26,11 @@ async function updateWikiContent() {
         getTags()
     ]);
     
-    // Обновляем счетчик найденных записей
     const countElement = document.querySelector('.articles-count');
     if (countElement) {
         countElement.textContent = `${data.total || 0} записей найдено`;
     }
     
-    // Обновляем список статей
     const articlesList = document.getElementById('articles-list');
     if (articlesList) {
         articlesList.innerHTML = data.articles && data.articles.length > 0 ? 
@@ -40,7 +38,6 @@ async function updateWikiContent() {
             '<div class="text-gray-400 text-center py-8">Записей не найдено</div>';
     }
     
-    // Обновляем пагинацию
     const paginationContainer = document.querySelector('.pagination-container');
     if (paginationContainer) {
         const newPagination = renderPagination(currentFilters.page, data.totalPages);
@@ -75,19 +72,16 @@ async function refreshWikiPage() {
     const selectedAuthorName = selectedAuthor ? selectedAuthor.name : '';
     const hasDateFilter = currentFilters.dateFrom || currentFilters.dateTo;
     
-    // Обновляем весь блок фильтров
     const filtersContainer = document.querySelector('.filters-container');
     if (filtersContainer) {
-        filtersContainer.innerHTML = renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter);
+        filtersContainer.innerHTML = renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter, users);
     }
     
-    // Обновляем счетчик
     const countElement = document.querySelector('.articles-count');
     if (countElement) {
         countElement.textContent = `${data.total || 0} записей найдено`;
     }
     
-    // Обновляем список статей
     const articlesList = document.getElementById('articles-list');
     if (articlesList) {
         articlesList.innerHTML = data.articles && data.articles.length > 0 ? 
@@ -95,7 +89,6 @@ async function refreshWikiPage() {
             '<div class="text-gray-400 text-center py-8">Записей не найдено</div>';
     }
     
-    // Обновляем пагинацию
     const paginationContainer = document.querySelector('.pagination-container');
     if (paginationContainer) {
         const newPagination = renderPagination(currentFilters.page, data.totalPages);
@@ -107,11 +100,10 @@ async function refreshWikiPage() {
         }
     }
     
-    // Перепривязываем события
-    attachFilterEvents(tags);
+    attachFilterEvents(tags, users);
 }
 
-function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, authorName, dateFrom, dateTo, hasDateFilter) {
+function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, authorName, dateFrom, dateTo, hasDateFilter, users) {
     return `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div class="bg-gray-800 rounded-lg p-4">
@@ -173,11 +165,11 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
                 <h3 class="text-sm font-semibold mb-2 text-gray-300">Фильтр по автору:</h3>
                 <select id="authorSelect" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Все авторы</option>
-                    ${tags.map(user => `
+                    ${users && users.length > 0 ? users.map(user => `
                         <option value="${user._id}" ${currentFilters.author === user._id ? 'selected' : ''}>
-                            ${escapeHtml(user.name)} (${user.articlesCount || 0} записей)
+                            ${escapeHtml(user.name)} (${getArticlesDeclension(user.articlesCount || 0)})
                         </option>
-                    `).join('')}
+                    `).join('') : '<option value="">Нет пользователей</option>'}
                 </select>
             </div>
         </div>
@@ -287,8 +279,7 @@ function applyTagFilters() {
     window.router.navigate(`/wiki?${params.toString()}`);
 }
 
-function attachFilterEvents(tags) {
-    // Сортировка
+function attachFilterEvents(tags, users) {
     const sortSelect = document.getElementById('sortSelect');
     if (sortSelect) {
         const newSortSelect = sortSelect.cloneNode(true);
@@ -298,7 +289,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Фильтр по дате
     const dateFrom = document.getElementById('dateFrom');
     const dateTo = document.getElementById('dateTo');
     if (dateFrom) {
@@ -316,7 +306,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Кнопка очистки дат
     const clearDateBtn = document.getElementById('clearDateBtn');
     if (clearDateBtn) {
         const newClearDateBtn = clearDateBtn.cloneNode(true);
@@ -330,7 +319,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Фильтр по автору
     const authorSelect = document.getElementById('authorSelect');
     if (authorSelect) {
         const newAuthorSelect = authorSelect.cloneNode(true);
@@ -340,7 +328,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Теги
     const tagsContainer = document.getElementById('tags-filter');
     if (tagsContainer) {
         const tagButtons = tagsContainer.querySelectorAll('.tag-filter-btn');
@@ -361,7 +348,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Кнопка очистки тегов
     const clearTagsBtn = document.getElementById('clearTagsBtn');
     if (clearTagsBtn) {
         const newClearTagsBtn = clearTagsBtn.cloneNode(true);
@@ -373,7 +359,6 @@ function attachFilterEvents(tags) {
         });
     }
     
-    // Кнопка очистки всех фильтров
     const clearBtn = document.getElementById('clearFiltersBtn');
     if (clearBtn) {
         const newClearBtn = clearBtn.cloneNode(true);
@@ -417,12 +402,15 @@ export default async function WikiPage() {
         author: urlParams.get('author') || ''
     };
     
-    const [data, categories, tags, users] = await Promise.all([
+    const [data, categories, tags, usersResponse] = await Promise.all([
         getArticles(currentFilters),
         getCategories(),
         getTags(),
         getUsers()
     ]);
+    
+    // Убеждаемся что users это массив
+    const users = Array.isArray(usersResponse) ? usersResponse : [];
     
     const categoryMap = new Map(categories.map(c => [c.slug, c]));
     const tagMap = new Map(tags.map(t => [t.slug, t]));
@@ -442,7 +430,7 @@ export default async function WikiPage() {
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">Все записи</h1>
                 <div class="filters-container">
-                    ${renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter)}
+                    ${renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter, users)}
                 </div>
                 <p class="text-gray-400 mt-2 articles-count">${data.total || 0} записей найдено</p>
             </div>
@@ -504,7 +492,6 @@ function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, d
 }
 
 window.initWikiEvents = function() {
-    // Инициализация поиска
     initSearchInput({
         id: 'searchInput',
         onSearch: (searchValue) => {
@@ -525,9 +512,11 @@ window.initWikiEvents = function() {
         type: 'articles'
     });
     
-    // Получаем теги для привязки событий
-    getTags().then(tags => {
-        attachFilterEvents(tags);
+    Promise.all([
+        getTags(),
+        getUsers()
+    ]).then(([tags, users]) => {
+        attachFilterEvents(tags, users);
     });
     
     attachPaginationEvents(onPageChange);

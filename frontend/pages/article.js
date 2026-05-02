@@ -1,4 +1,4 @@
-import { escapeHtml, calculateReadTime, formatDate } from '../utils/utils.js';
+import { escapeHtml, calculateReadTime, formatDate, getMinutesDeclension, getViewsDeclension } from '../utils/utils.js';
 import { getArticle } from '../api.js';
 import ArticleCard from '../components/ArticleCard.js';
 import FavoriteButton from '../components/FavoriteButton.js';
@@ -94,6 +94,8 @@ export default async function ArticlePage(params) {
         }
         
         const readTime = article.readTime || calculateReadTime(article.content);
+        const readTimeText = getMinutesDeclension(readTime);
+        const viewsText = getViewsDeclension(article.views);
         const author = article.author || {};
         const authorAvatar = author.avatar ? `/api/profile/avatar/${author.avatar}` : UPLOAD.DEFAULT_AVATAR;
         const isLoggedIn = !!state.currentUser;
@@ -147,8 +149,8 @@ export default async function ArticlePage(params) {
                     
                     <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6 pb-4 border-b border-gray-700">
                         <div>📅 ${formatDate(article.createdAt)}</div>
-                        <div>⏱️ ${readTime} мин</div>
-                        <div>👁️ ${article.views} просмотров</div>
+                        <div>⏱️ ${readTimeText}</div>
+                        <div>👁️ ${viewsText}</div>
                         <div class="flex items-center gap-2">
                             <img src="${authorAvatar}" alt="${escapeHtml(author.name || 'Нет автора')}" class="w-5 h-5 rounded-full object-cover">
                             <span>${escapeHtml(author.name || author.email || 'Нет автора')}</span>

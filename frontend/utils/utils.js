@@ -95,3 +95,25 @@ export function getStatusIcon(status) {
         default: return '❓';
     }
 }
+
+// Склонение слов
+export function declension(number, titles) {
+    const cases = [2, 0, 1, 1, 1, 2];
+    const index = (number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5];
+    return titles[index];
+}
+
+// Склонение для минут
+export function getMinutesDeclension(minutes) {
+    return `${minutes} ${declension(minutes, ['минута', 'минуты', 'минут'])}`;
+}
+
+// Склонение для записей
+export function getArticlesDeclension(count) {
+    return `${count} ${declension(count, ['запись', 'записи', 'записей'])}`;
+}
+
+// Склонение для просмотров
+export function getViewsDeclension(count) {
+    return `${count} ${declension(count, ['просмотр', 'просмотра', 'просмотров'])}`;
+}
