@@ -88,11 +88,6 @@ function setupGlobalClickHandler() {
     });
 }
 
-/**
- * Компонент кнопки "Избранное"
- * @param {string} articleId - ID статьи
- * @returns {string} HTML-строка с кнопкой
- */
 export default function FavoriteButton(articleId) {
     // Настраиваем глобальный обработчик один раз
     setupGlobalClickHandler();
