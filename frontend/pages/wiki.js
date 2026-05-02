@@ -451,8 +451,7 @@ export default async function WikiPage() {
                 ${renderSearchInput({
                     id: 'searchInput',
                     placeholder: 'Введите название или описание',
-                    initialValue: currentFilters.search,
-                    className: 'w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    initialValue: currentFilters.search
                 })}
             </div>
             
@@ -522,7 +521,8 @@ window.initWikiEvents = function() {
             window.history.pushState({}, '', url);
             
             updateWikiContent();
-        }
+        },
+        type: 'articles'
     });
     
     // Получаем теги для привязки событий

@@ -295,4 +295,26 @@ router.get('/users/stats', authMiddleware, adminMiddleware, async (req, res) => 
     }
 });
 
+router.get('/users/search', async (req, res) => {
+    try {
+        const { q, limit = 5 } = req.query;
+        
+        if (!q || q.length < 2) {
+            return res.json([]);
+        }
+        
+        const users = await User.find({
+            name: { $regex: q, $options: 'i' }
+        })
+            .select('name slug avatar')
+            .limit(parseInt(limit))
+            .lean();
+        
+        res.json(users);
+    } catch (error) {
+        console.error('Error searching users:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

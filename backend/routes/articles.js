@@ -118,6 +118,32 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.get('/search', async (req, res) => {
+    try {
+        const { q, limit = 5 } = req.query;
+        
+        if (!q || q.length < 2) {
+            return res.json([]);
+        }
+        
+        const articles = await Article.find({
+            $or: [
+                { title: { $regex: q, $options: 'i' } },
+                { description: { $regex: q, $options: 'i' } }
+            ],
+            status: 'published'
+        })
+            .select('title slug description')
+            .limit(parseInt(limit))
+            .lean();
+        
+        res.json(articles);
+    } catch (error) {
+        console.error('Error searching articles:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/users - получение списка пользователей для админа
 router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
     try {

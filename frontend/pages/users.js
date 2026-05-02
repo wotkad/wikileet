@@ -200,7 +200,7 @@ export default async function UsersPage() {
                             id: 'searchInput',
                             placeholder: 'Введите имя',
                             initialValue: currentFilters.search,
-                            className: 'w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                            className: 'w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                         })}
                     </div>
                     <div>
@@ -238,7 +238,8 @@ window.initUsersPage = function() {
     // Инициализация поиска
     initSearchInput({
         id: 'searchInput',
-        onSearch: onSearch
+        onSearch: onSearch,
+        type: 'users'
     });
     
     const roleFilter = document.getElementById('roleFilter');
