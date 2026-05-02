@@ -145,25 +145,6 @@ async function renderProfilePage() {
                 </form>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-blue-400">${allArticles.length}</div>
-                    <div class="text-gray-400 mt-1">Написано статей</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-green-400">
-                        ${allArticles.filter(a => a.status === 'published').length}
-                    </div>
-                    <div class="text-gray-400 mt-1">Опубликовано</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <div class="text-3xl font-bold text-yellow-400">
-                        ${allArticles.filter(a => a.status === 'draft').length}
-                    </div>
-                    <div class="text-gray-400 mt-1">Черновики</div>
-                </div>
-            </div>
-            
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
                 <h2 class="text-2xl font-bold mb-4">📝 Недавние статьи</h2>
                 <div class="space-y-4">

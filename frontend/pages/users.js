@@ -1,5 +1,5 @@
 import { PAGINATION, SEARCH, UPLOAD, USER_ROLES } from '../constants.js';
-import { escapeHtml, debounce, formatDate, getArticlesDeclension, getViewsDeclension } from '../utils/utils.js';
+import { escapeHtml, debounce, formatDate, getArticlesDeclension, getViewsDeclension, getUsersDeclension } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { renderSearchInput, initSearchInput } from '../components/Search.js';
 
@@ -17,26 +17,6 @@ async function updateUsersContent() {
         getUsers(currentFilters),
         getUserStats()
     ]);
-    
-    const statsContainer = document.querySelector('.stats-container');
-    if (statsContainer) {
-        statsContainer.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-blue-400">${stats.totalUsers || 0}</div>
-                    <div class="text-sm text-gray-400">Всего пользователей</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-purple-400">${stats.adminCount || 0}</div>
-                    <div class="text-sm text-gray-400">Администраторов</div>
-                </div>
-                <div class="bg-gray-800 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400">${stats.userCount || 0}</div>
-                    <div class="text-sm text-gray-400">Пользователей</div>
-                </div>
-            </div>
-        `;
-    }
     
     const usersList = document.getElementById('users-list');
     if (usersList) {
@@ -177,24 +157,6 @@ export default async function UsersPage() {
         <div class="mx-auto">
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">👥 Пользователи</h1>
-                <p class="text-gray-400">${stats.totalUsers || 0} пользователей</p>
-            </div>
-            
-            <div class="stats-container">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-gray-800 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-blue-400">${stats.totalUsers || 0}</div>
-                        <div class="text-sm text-gray-400">Всего пользователей</div>
-                    </div>
-                    <div class="bg-gray-800 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-purple-400">${stats.adminCount || 0}</div>
-                        <div class="text-sm text-gray-400">Администраторов</div>
-                    </div>
-                    <div class="bg-gray-800 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-green-400">${stats.userCount || 0}</div>
-                        <div class="text-sm text-gray-400">Пользователей</div>
-                    </div>
-                </div>
             </div>
             
             <div class="bg-gray-800 rounded-lg p-4 mb-6">
@@ -227,7 +189,7 @@ export default async function UsersPage() {
                     </div>
                 </div>
             </div>
-            
+            <p class="text-gray-400 mt-2 mb-6 articles-count">${getUsersDeclension(stats.totalUsers)}</p>
             <div class="space-y-3" id="users-list">
                 ${renderUsersList(usersData.users)}
             </div>

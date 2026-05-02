@@ -28,7 +28,7 @@ async function updateWikiContent() {
     
     const countElement = document.querySelector('.articles-count');
     if (countElement) {
-        countElement.textContent = `${data.total || 0} записей найдено`;
+        countElement.textContent = `${getArticlesDeclension(data.total)}`;
     }
     
     const articlesList = document.getElementById('articles-list');
@@ -79,7 +79,7 @@ async function refreshWikiPage() {
     
     const countElement = document.querySelector('.articles-count');
     if (countElement) {
-        countElement.textContent = `${data.total || 0} записей найдено`;
+        countElement.textContent = `${getArticlesDeclension(data.total)}`;
     }
     
     const articlesList = document.getElementById('articles-list');
@@ -167,7 +167,7 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
                     <option value="">Все авторы</option>
                     ${users && users.length > 0 ? users.map(user => `
                         <option value="${user._id}" ${currentFilters.author === user._id ? 'selected' : ''}>
-                            ${escapeHtml(user.name)} (${getArticlesDeclension(user.articlesCount || 0)})
+                            ${escapeHtml(user.name)} (${getArticlesDeclension(user.articlesCount)})
                         </option>
                     `).join('') : '<option value="">Нет пользователей</option>'}
                 </select>
@@ -432,7 +432,7 @@ export default async function WikiPage() {
                 <div class="filters-container">
                     ${renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter, users)}
                 </div>
-                <p class="text-gray-400 mt-2 articles-count">${data.total || 0} записей найдено</p>
+                <p class="text-gray-400 mt-2 articles-count">${getArticlesDeclension(data.total)}</p>
             </div>
             
             <div class="mb-6">
@@ -497,7 +497,7 @@ window.initWikiEvents = function() {
         onSearch: (searchValue) => {
             currentFilters.search = searchValue;
             currentFilters.page = 1;
-            
+
             const url = new URL(window.location.href);
             if (searchValue && searchValue.trim()) {
                 url.searchParams.set('search', searchValue.trim());

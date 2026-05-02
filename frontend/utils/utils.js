@@ -117,3 +117,8 @@ export function getArticlesDeclension(count) {
 export function getViewsDeclension(count) {
     return `${count} ${declension(count, ['просмотр', 'просмотра', 'просмотров'])}`;
 }
+
+// Склонение для пользователей
+export function getUsersDeclension(count) {
+    return `${count} ${declension(count, ['пользователь', 'пользователя', 'пользователей'])}`;
+}

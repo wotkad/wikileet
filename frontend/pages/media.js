@@ -174,7 +174,7 @@ function renderMediaGrid() {
                              class="w-full h-full object-cover"
                              loading="lazy">
                     ` : `
-                        <video class="w-full h-full object-cover" muted controls>
+                        <video class="w-full h-full object-cover" muted>
                             <source src="${media.url}">
                         </video>
                     `}

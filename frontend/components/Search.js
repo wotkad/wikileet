@@ -1,10 +1,11 @@
-import { debounce } from '../utils/utils.js';
+import { debounce, escapeHtml } from '../utils/utils.js';
 import { SEARCH } from '../constants.js';
 
 // Глобальное состояние для подсказок
 let currentSuggestions = [];
 let currentSuggestionType = 'articles'; // 'articles' или 'users'
 let selectedSuggestionIndex = -1;
+let currentQuery = ''; // Сохраняем последний запрос
 
 // API для поиска подсказок
 async function fetchSuggestions(query, type) {
@@ -64,46 +65,40 @@ function renderSuggestions(suggestions, type) {
             <div class="p-2 border-b border-gray-700">
                 <span class="text-xs text-gray-500">Статьи</span>
             </div>
-            ${suggestions.map((item, index) => `
-                <a href="${item.url}" 
-                   class="suggestion-item block px-3 py-2 hover:bg-gray-700 transition ${index === selectedSuggestionIndex ? 'bg-gray-700' : ''}"
-                   data-index="${index}"
-                   data-url="${item.url}">
-                    <div class="font-medium text-sm">${escapeHtml(item.title)}</div>
-                    <div class="text-xs text-gray-400">${escapeHtml(item.description?.substring(0, 80) || '')}</div>
-                </a>
-            `).join('')}
+            <div class="max-h-64 overflow-y-auto">
+                ${suggestions.map((item, index) => `
+                    <a href="${item.url}" 
+                       class="suggestion-item block px-3 py-2 hover:bg-gray-700 transition ${index === selectedSuggestionIndex ? 'bg-gray-700' : ''}"
+                       data-index="${index}"
+                       data-url="${item.url}">
+                        <div class="font-medium text-sm">${escapeHtml(item.title)}</div>
+                        <div class="text-xs text-gray-400">${escapeHtml(item.description?.substring(0, 80) || '')}</div>
+                    </a>
+                `).join('')}
+            </div>
         `;
     } else {
         container.innerHTML = `
             <div class="p-2 border-b border-gray-700">
                 <span class="text-xs text-gray-500">Пользователи</span>
             </div>
-            ${suggestions.map((item, index) => `
-                <a href="${item.url}" 
-                   class="suggestion-item block px-3 py-2 hover:bg-gray-700 transition ${index === selectedSuggestionIndex ? 'bg-gray-700' : ''}"
-                   data-index="${index}"
-                   data-url="${item.url}">
-                    <div class="flex items-center gap-2">
-                        <img src="${item.avatar ? `/api/profile/avatar/${item.avatar}` : '/api/profile/avatar/default-avatar.png'}" 
-                             class="w-6 h-6 rounded-full object-cover">
-                        <div class="font-medium text-sm">${escapeHtml(item.title)}</div>
-                    </div>
-                </a>
-            `).join('')}
+            <div class="max-h-64 overflow-y-auto">
+                ${suggestions.map((item, index) => `
+                    <a href="${item.url}" 
+                       class="suggestion-item block px-3 py-2 hover:bg-gray-700 transition ${index === selectedSuggestionIndex ? 'bg-gray-700' : ''}"
+                       data-index="${index}"
+                       data-url="${item.url}">
+                        <div class="flex items-center gap-2">
+                            <img src="${item.avatar ? `/api/profile/avatar/${item.avatar}` : '/api/profile/avatar/default-avatar.png'}" 
+                                 class="w-6 h-6 rounded-full object-cover"
+                                 onerror="this.src='/api/profile/avatar/default-avatar.png'">
+                            <div class="font-medium text-sm">${escapeHtml(item.title)}</div>
+                        </div>
+                    </a>
+                `).join('')}
+            </div>
         `;
     }
-    
-    // Добавляем обработчики для элементов подсказок
-    document.querySelectorAll('.suggestion-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const url = item.dataset.url;
-            if (url && window.router) {
-                window.router.navigate(url);
-            }
-        });
-    });
 }
 
 // Скрыть подсказки
@@ -111,13 +106,21 @@ function hideSuggestions() {
     const container = document.getElementById('search-suggestions');
     if (container) {
         container.classList.add('hidden');
-        container.innerHTML = '';
+        // НЕ ОЧИЩАЕМ innerHTML, чтобы при повторном фокусе подсказки остались
     }
     selectedSuggestionIndex = -1;
 }
 
+// Показать подсказки (если есть)
+function showSuggestions() {
+    const container = document.getElementById('search-suggestions');
+    if (container && currentSuggestions && currentSuggestions.length > 0) {
+        container.classList.remove('hidden');
+    }
+}
+
 // Обработка клавиш навигации по подсказкам
-function handleKeyboardNavigation(e, suggestions, type, onSearch) {
+function handleKeyboardNavigation(e, suggestions, type) {
     if (!suggestions || suggestions.length === 0) return false;
     
     switch (e.key) {
@@ -125,29 +128,20 @@ function handleKeyboardNavigation(e, suggestions, type, onSearch) {
             e.preventDefault();
             selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
             renderSuggestions(suggestions, type);
-            // Прокручиваем к выбранному элементу
-            const selectedItem = document.querySelector(`.suggestion-item[data-index="${selectedSuggestionIndex}"]`);
-            if (selectedItem) {
-                selectedItem.scrollIntoView({ block: 'nearest' });
-            }
             return true;
         case 'ArrowUp':
             e.preventDefault();
             selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
             renderSuggestions(suggestions, type);
-            const selectedItemUp = document.querySelector(`.suggestion-item[data-index="${selectedSuggestionIndex}"]`);
-            if (selectedItemUp) {
-                selectedItemUp.scrollIntoView({ block: 'nearest' });
-            }
             return true;
         case 'Enter':
             if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
                 e.preventDefault();
                 const selected = suggestions[selectedSuggestionIndex];
                 if (window.router) {
+                    hideSuggestions();
                     window.router.navigate(selected.url);
                 }
-                hideSuggestions();
                 return true;
             }
             return false;
@@ -188,7 +182,7 @@ export function initSearchInput(options) {
     const {
         id = 'searchInput',
         onSearch,
-        type = 'articles', // 'articles' или 'users'
+        type = 'articles',
         delay = SEARCH.DEBOUNCE_DELAY
     } = options;
     
@@ -212,13 +206,16 @@ export function initSearchInput(options) {
             container.className = 'absolute z-50 w-full mt-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden';
             container.innerHTML = '<div class="max-h-64 overflow-y-auto"></div>';
             wrapper.appendChild(container);
+            suggestionsContainer = container;
         }
     }
     
     // Функция для обновления подсказок
     const updateSuggestions = async (query) => {
+        currentQuery = query;
         if (!query || query.length < 2) {
             hideSuggestions();
+            currentSuggestions = [];
             return;
         }
         
@@ -242,48 +239,43 @@ export function initSearchInput(options) {
         }
     });
     
-    // Добавляем обработчик keydown для навигации по подсказкам
-    newSearchInput.addEventListener('keydown', (e) => {
-        const handled = handleKeyboardNavigation(e, currentSuggestions, type, onSearch);
-        if (handled) {
-            e.preventDefault();
+    // Добавляем обработчик focus - показываем подсказки если есть
+    newSearchInput.addEventListener('focus', () => {
+        if (currentSuggestions && currentSuggestions.length > 0 && currentQuery && currentQuery.length >= 2) {
+            showSuggestions();
         }
     });
     
-    // Закрываем подсказки при потере фокуса
-    newSearchInput.addEventListener('blur', () => {
-        setTimeout(() => {
-            hideSuggestions();
-        }, 200);
-    });
-    
-    // Добавляем обработчик Enter для отправки поиска
+    // Добавляем обработчик keydown для навигации по подсказкам
     newSearchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && (selectedSuggestionIndex === -1 || !currentSuggestions.length)) {
+        const handled = handleKeyboardNavigation(e, currentSuggestions, type);
+        if (handled) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Enter для отправки поиска без выбранной подсказки
+        if (e.key === 'Enter' && selectedSuggestionIndex === -1) {
             e.preventDefault();
             if (onSearch && typeof onSearch === 'function') {
                 onSearch(e.target.value);
+                hideSuggestions();
             }
         }
+    });
+    
+    // Закрываем подсказки при потере фокуса (НО НЕ ОЧИЩАЕМ)
+    newSearchInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            hideSuggestions(); // Просто скрываем, не очищая содержимое
+        }, 200);
     });
     
     // Восстанавливаем фокус и позицию курсора
     const len = newSearchInput.value.length;
     newSearchInput.setSelectionRange(len, len);
     
-    // Возвращаем функцию для очистки
     return () => {
-        newSearchInput.removeEventListener('input', debouncedSuggestions);
-        hideSuggestions();
+        // Очистка при необходимости
     };
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
 }
