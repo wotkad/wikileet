@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken'); // Добавляем импорт jwt
 const Article = require('../models/Article');
 const Category = require('../models/Category');
 const Tag = require('../models/Tag');
+const { updateMediaUsage } = require('../middleware/mediaUsage');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
@@ -236,6 +237,11 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Article with this slug already exists' });
         }
         
+        // Рассчитываем время чтения
+        const text = content.replace(/<[^>]*>/g, '');
+        const words = text.trim().split(/\s+/).length;
+        const readTime = Math.max(1, Math.ceil(words / 200));
+        
         // Определяем автора
         let authorId = author || req.userId;
         
@@ -247,6 +253,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             category,
             tags: tags || [],
             author: authorId,
+            readTime,
         };
         
         // Обработка статуса и даты публикации
@@ -259,6 +266,10 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
         
         const article = new Article(articleData);
         await article.save();
+        
+        // ОБНОВЛЯЕМ ИСПОЛЬЗОВАНИЕ МЕДИАФАЙЛОВ
+        await updateMediaUsage(article._id.toString(), content);
+        
         await article.populate('category');
         await article.populate('tags');
         await article.populate('author', 'name email');
@@ -320,6 +331,9 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         if (!article) {
             return res.status(404).json({ error: 'Article not found' });
         }
+        
+        // ОБНОВЛЯЕМ ИСПОЛЬЗОВАНИЕ МЕДИАФАЙЛОВ
+        await updateMediaUsage(article._id.toString(), content);
         
         await article.populate('category');
         await article.populate('tags');
@@ -405,6 +419,12 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params;
         
         console.log('Deleting article with ID:', id);
+        
+        // Удаляем статью из usedInArticles всех медиафайлов
+        await Media.updateMany(
+            { usedInArticles: id },
+            { $pull: { usedInArticles: id } }
+        );
         
         const article = await Article.findByIdAndDelete(id);
         

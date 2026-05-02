@@ -121,4 +121,48 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     }
 });
 
+router.get('/:id/articles', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const media = await Media.findById(req.params.id)
+            .populate('usedInArticles', 'title slug description');
+        
+        if (!media) {
+            return res.status(404).json({ error: 'Media not found' });
+        }
+        
+        res.json({
+            mediaId: media._id,
+            filename: media.originalName,
+            articles: media.usedInArticles || []
+        });
+    } catch (error) {
+        console.error('Error getting articles using media:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/:id/update-usage', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { articleIds } = req.body; // массив ID статей
+        
+        const media = await Media.findByIdAndUpdate(
+            req.params.id,
+            { usedInArticles: articleIds },
+            { new: true }
+        ).populate('usedInArticles', 'title slug');
+        
+        if (!media) {
+            return res.status(404).json({ error: 'Media not found' });
+        }
+        
+        res.json({
+            message: 'Media usage updated',
+            articles: media.usedInArticles
+        });
+    } catch (error) {
+        console.error('Error updating media usage:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

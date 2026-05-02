@@ -35,6 +35,10 @@ const mediaSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    usedInArticles: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Article'
+    }],
     createdAt: {
         type: Date,
         default: Date.now,

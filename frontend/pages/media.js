@@ -164,6 +164,7 @@ function renderMediaGrid() {
     container.innerHTML = currentMedia.map(media => {
         const fullUrl = `${window.location.origin}${media.url}`;
         const isImage = media.type === 'image';
+        const tooltipId = `tooltip-${media._id}`;
         
         return `
             <div class="bg-gray-800 rounded-lg overflow-hidden group relative">
@@ -179,6 +180,13 @@ function renderMediaGrid() {
                         </video>
                     `}
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center gap-2">
+                        <button class="info-btn p-2 bg-green-600 rounded-full hover:bg-green-700 transition transform scale-0 group-hover:scale-100"
+                                data-media-id="${media._id}"
+                                data-tooltip-id="${tooltipId}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </button>
                         <button class="copy-btn p-2 bg-blue-600 rounded-full hover:bg-blue-700 transition transform scale-0 group-hover:scale-100"
                                 data-url="${fullUrl}"
                                 data-title="${escapeHtml(media.originalName)}">
@@ -206,6 +214,12 @@ function renderMediaGrid() {
                         ${escapeHtml(media.uploadedBy?.name || 'Unknown')}
                     </div>
                 </div>
+                
+                <!-- Tooltip для отображения статей -->
+                <div id="${tooltipId}" 
+                     class="articles-tooltip hidden fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-w-sm w-80"
+                     style="display: none;">
+                </div>
             </div>
         `;
     }).join('');
@@ -214,6 +228,7 @@ function renderMediaGrid() {
 }
 
 function attachMediaEvents() {
+    // Копирование
     document.querySelectorAll('.copy-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -227,6 +242,7 @@ function attachMediaEvents() {
         });
     });
     
+    // Удаление
     document.querySelectorAll('.delete-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -237,6 +253,74 @@ function attachMediaEvents() {
             const id = newBtn.dataset.id;
             const filename = newBtn.dataset.filename;
             await deleteMedia(id, filename);
+        });
+    });
+    
+    // Информация о статьях (при наведении)
+    document.querySelectorAll('.info-btn').forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        let hideTimeout;
+        let isHoveringTooltip = false;
+        const tooltipId = newBtn.dataset.tooltipId;
+        const tooltip = document.getElementById(tooltipId);
+        
+        if (!tooltip) return;
+        
+        function showTooltip() {
+            clearTimeout(hideTimeout);
+            const rect = newBtn.getBoundingClientRect();
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${rect.right + 10}px`;
+            tooltip.style.top = `${rect.top - 20}px`;
+            
+            // Проверяем, не выходит ли за пределы экрана
+            const tooltipRect = tooltip.getBoundingClientRect();
+            if (tooltipRect.right > window.innerWidth) {
+                tooltip.style.left = `${rect.left - tooltipRect.width - 10}px`;
+            }
+            if (tooltipRect.bottom > window.innerHeight) {
+                tooltip.style.top = `${window.innerHeight - tooltipRect.height - 10}px`;
+            }
+        }
+        
+        function hideTooltip() {
+            if (!isHoveringTooltip) {
+                hideTimeout = setTimeout(() => {
+                    tooltip.style.display = 'none';
+                }, 300);
+            }
+        }
+        
+        // Показываем тултип при наведении на кнопку
+        newBtn.addEventListener('mouseenter', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearTimeout(hideTimeout);
+            
+            // Загружаем данные, если тултип пустой
+            if (tooltip.innerHTML.trim() === '' || tooltip.children.length === 0) {
+                tooltip.innerHTML = '<div class="text-center py-4 text-gray-400">Загрузка...</div>';
+                await loadMediaArticles(newBtn.dataset.mediaId, tooltipId);
+            }
+            
+            showTooltip();
+        });
+        
+        newBtn.addEventListener('mouseleave', () => {
+            hideTooltip();
+        });
+        
+        // Обработка наведения на тултип
+        tooltip.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            isHoveringTooltip = true;
+        });
+        
+        tooltip.addEventListener('mouseleave', () => {
+            isHoveringTooltip = false;
+            hideTooltip();
         });
     });
 }
@@ -310,3 +394,58 @@ window.initMediaPage = function() {
     
     loadMedia();
 };
+
+async function loadMediaArticles(mediaId, elementId) {
+    try {
+        const response = await fetch(`/api/media/${mediaId}/articles`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Failed to load articles');
+        
+        const data = await response.json();
+        renderArticlesTooltip(data.articles, elementId);
+    } catch (error) {
+        console.error('Error loading media articles:', error);
+        const tooltip = document.getElementById(elementId);
+        if (tooltip) {
+            tooltip.innerHTML = `
+                <div class="text-red-400 text-sm p-2">
+                    Ошибка загрузки списка статей
+                </div>
+            `;
+        }
+    }
+}
+
+function renderArticlesTooltip(articles, elementId) {
+    const tooltip = document.getElementById(elementId);
+    if (!tooltip) return;
+    
+    if (!articles || articles.length === 0) {
+        tooltip.innerHTML = `
+            <div class="text-gray-400 text-sm p-2">
+                Файл не используется ни в одной статье
+            </div>
+        `;
+        return;
+    }
+    
+    tooltip.innerHTML = `
+        <div class="p-2 max-h-64 overflow-y-auto">
+            <div class="text-xs text-gray-400 mb-2 pb-2 border-b border-gray-700">
+                Используется в:
+            </div>
+            <div class="space-y-1">
+                ${articles.map(article => `
+                    <a href="/wiki/${article.slug}" 
+                       class="block text-sm text-blue-400 hover:text-blue-300 hover:bg-gray-700 p-1 rounded transition"
+                       target="_blank">
+                        <div class="font-medium">${escapeHtml(article.title)}</div>
+                        ${article.description ? `<div class="text-xs text-gray-500 truncate">${escapeHtml(article.description)}</div>` : ''}
+                    </a>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}

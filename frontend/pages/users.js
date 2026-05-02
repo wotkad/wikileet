@@ -102,8 +102,8 @@ function renderUsersList(users) {
     }
     
     return users.map(user => {
-        const articlesText = getArticlesDeclension(user.articlesCount || 0);
-        const viewsText = getViewsDeclension(user.totalViews || 0);
+        const articlesText = getArticlesDeclension(user.articlesCount);
+        const viewsText = getViewsDeclension(user.totalViews);
         
         return `
             <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">

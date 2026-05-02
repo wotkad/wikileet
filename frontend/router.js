@@ -232,11 +232,16 @@ const router = {
         }
 
         if (path === '/media') {
-            setTimeout(() => {
-                if (window.initMediaPage) {
-                    window.initMediaPage();
-                }
-            }, 50);
+            if (!state.currentUser || state.currentUser.role !== 'admin') {
+                this.navigate('/login');
+                return;
+            } else {
+                setTimeout(() => {
+                    if (window.initMediaPage) {
+                        window.initMediaPage();
+                    }
+                }, 50);
+            }
         }
 
         const content = await Component(params);

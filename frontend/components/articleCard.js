@@ -1,3 +1,4 @@
+// ArticleCard.js
 import { escapeHtml, calculateReadTime, truncateText, formatDate, getMinutesDeclension, getViewsDeclension } from '../utils/utils.js';
 import { DISPLAY, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
@@ -12,6 +13,71 @@ async function copyToClipboard(text, message) {
         console.error('Ошибка копирования:', err);
         window.toast?.error('Не удалось скопировать ссылку');
     }
+}
+
+// Функция для проверки наличия медиафайлов в контенте
+function hasMediaInContent(content) {
+    if (!content) return { hasImage: false, hasVideo: false };
+    
+    // Проверка на изображения
+    const imagePatterns = [
+        /<img[^>]+src=["'][^"']+["']/gi,
+        /\.(jpg|jpeg|png|gif|webp|svg)/gi,
+        /\/api\/media\/file\/[^"'\s)]+\.(jpg|jpeg|png|gif|webp|svg)/gi
+    ];
+    
+    // Проверка на видео
+    const videoPatterns = [
+        /<video[^>]*>[\s\S]*?<\/video>/gi,
+        /<source[^>]+src=["'][^"']+\.(mp4|webm|mov|ogg)[^"']*["']/gi,
+        /\.(mp4|webm|mov|ogg)/gi,
+        /\/api\/media\/file\/[^"'\s)]+\.(mp4|webm|mov)/gi
+    ];
+    
+    let hasImage = false;
+    let hasVideo = false;
+    
+    // Проверяем изображения
+    for (const pattern of imagePatterns) {
+        if (pattern.test(content)) {
+            hasImage = true;
+            break;
+        }
+    }
+    
+    // Проверяем видео
+    for (const pattern of videoPatterns) {
+        if (pattern.test(content)) {
+            hasVideo = true;
+            break;
+        }
+    }
+    
+    return { hasImage, hasVideo };
+}
+
+// Функция для получения иконки медиа
+function getMediaIcon(hasImage, hasVideo) {
+    if (hasImage && hasVideo) {
+        return {
+            icon: '🎬📷',
+            title: 'Содержит изображения и видео',
+            class: 'bg-purple-900 text-purple-300'
+        };
+    } else if (hasVideo) {
+        return {
+            icon: '🎬',
+            title: 'Содержит видео',
+            class: 'bg-red-900 text-red-300'
+        };
+    } else if (hasImage) {
+        return {
+            icon: '📷',
+            title: 'Содержит изображения',
+            class: 'bg-green-900 text-green-300'
+        };
+    }
+    return null;
 }
 
 export default function ArticleCard(article) {
@@ -31,6 +97,10 @@ export default function ArticleCard(article) {
     const articleUrl = `${window.location.origin}/wiki/${article.slug}`;
     const readTimeText = getMinutesDeclension(readTime);
     const viewsText = getViewsDeclension(article.views);
+    
+    // Проверяем наличие медиа в контенте
+    const { hasImage, hasVideo } = hasMediaInContent(article.content);
+    const mediaIcon = getMediaIcon(hasImage, hasVideo);
     
     return `
         <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition relative group">
@@ -62,6 +132,14 @@ export default function ArticleCard(article) {
                         +${article.tags.length - DISPLAY.MAX_TAGS_IN_CARD}
                     </span>
                 ` : ''}
+                
+                <!-- Иконка медиа, если есть -->
+                ${mediaIcon ? `
+                    <span class="px-2 py-1 ${mediaIcon.class} rounded flex items-center gap-1" title="${mediaIcon.title}">
+                        <span>${mediaIcon.icon}</span>
+                    </span>
+                ` : ''}
+                
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">👁️ ${viewsText}</span>
                 <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">⏱️ ${readTimeText}</span>
                 ${hasValidAuthor ? `
