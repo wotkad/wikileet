@@ -1,9 +1,31 @@
 import { getArticle, createArticle, updateArticle, getCategories, getTags, getUsers } from '../../api.js';
-import { showConfirmDialog } from '../../components/Dialog.js';
+import { showConfirmDialog, showPreviewDialog } from '../../components/Dialog.js';
 import { escapeHtml, generateSlug, isValidSlug, formatDate } from '../../utils/utils.js';
 import '../../components/Toast.js';
 
 let simplemde = null;
+
+// Функция для парсинга Markdown в HTML
+function parseMarkdown(content) {
+    if (!content) return '';
+    if (typeof marked !== 'undefined') {
+        return marked.parse(content);
+    }
+    return escapeHtml(content).replace(/\n/g, '<br>');
+}
+
+// Функция для показа предпросмотра
+async function showPreview() {
+    let content = document.getElementById('content').value;
+    if (window.simplemde && window.simplemdeInitialized) {
+        content = window.simplemde.value();
+    }
+    
+    const title = document.getElementById('title').value || 'Без заголовка';
+    const parsedContent = parseMarkdown(content);
+    
+    await showPreviewDialog(title, parsedContent);
+}
 
 export default async function ArticleEditPage(params) {
     const isEdit = params.slug && params.slug !== 'new';
@@ -40,6 +62,7 @@ export default async function ArticleEditPage(params) {
     const currentStatus = article?.status || 'draft';
     const currentAuthor = article?.author?._id || '';
     const currentPublishDate = article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '';
+    const previewUrl = isEdit && article?.slug ? `/wiki/${article.slug}` : '#';
     
     return `
         <div class="mx-auto">
@@ -151,6 +174,12 @@ export default async function ArticleEditPage(params) {
                     <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
                         💾 Сохранить
                     </button>
+                    <button type="button" id="previewBtn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition">
+                        👁️ Предпросмотр
+                    </button>
+                    <a href="${previewUrl}" target="_blank" class="px-6 py-2 bg-green-700 hover:bg-green-600 rounded-lg font-semibold transition text-center ${!isEdit ? 'opacity-50 cursor-not-allowed' : ''}">
+                        Перейти
+                    </a>
                     <a href="/admin/articles" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition text-center">
                         Отмена
                     </a>
@@ -176,12 +205,10 @@ function initMarkdownEditor(isNew = false) {
         }
     }
     
-    // Очищаем autosave для новой статьи
     if (isNew) {
         localStorage.removeItem('smde_article_content');
     }
     
-    // Загружаем CSS если ещё не загружен
     if (!document.querySelector('link[href*="simplemde"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -189,7 +216,6 @@ function initMarkdownEditor(isNew = false) {
         document.head.appendChild(link);
     }
     
-    // Загружаем SimpleMDE скрипт
     if (typeof window.SimpleMDE === 'undefined') {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js';
@@ -208,16 +234,13 @@ function initMarkdownEditor(isNew = false) {
 }
 
 function createSimpleMDE(textarea, isNew = false) {
-    // Даем время на загрузку DOM
     setTimeout(() => {
         try {
-            // Убеждаемся, что textarea всё ещё на месте
             if (!document.getElementById('content')) {
                 console.error('Textarea not found');
                 return;
             }
             
-            // Очищаем autosave для новой статьи
             if (isNew && (!textarea.value || textarea.value.trim() === '')) {
                 localStorage.removeItem('smde_article_content');
             }
@@ -245,7 +268,6 @@ function createSimpleMDE(textarea, isNew = false) {
                 },
             });
             
-            // Обновляем значение в textarea при изменении
             window.simplemde.codemirror.on('change', () => {
                 textarea.value = window.simplemde.value();
             });
@@ -269,10 +291,19 @@ window.initArticleEdit = async function(slug) {
     
     console.log('Initializing article edit, isEdit:', isEdit, 'slug:', slug);
     
-    // Инициализируем Markdown редактор с задержкой для полной загрузки DOM
     setTimeout(() => {
         initMarkdownEditor(isNew);
     }, 200);
+    
+    // Обработчик кнопки предпросмотра
+    setTimeout(() => {
+        const previewBtn = document.getElementById('previewBtn');
+        if (previewBtn) {
+            const newPreviewBtn = previewBtn.cloneNode(true);
+            previewBtn.parentNode.replaceChild(newPreviewBtn, previewBtn);
+            newPreviewBtn.addEventListener('click', showPreview);
+        }
+    }, 300);
     
     const slugInput = document.getElementById('slug');
     if (slugInput) {
@@ -285,7 +316,6 @@ window.initArticleEdit = async function(slug) {
         });
     }
     
-    // Автогенерация slug из заголовка для новых статей
     if (isNew) {
         const titleInput = document.getElementById('title');
         if (titleInput) {

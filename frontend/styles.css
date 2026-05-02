@@ -132,6 +132,15 @@ body {
     color: #f3f4f6;
 }
 
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+    margin-top: 0;
+}
+
 .prose p {
     margin-bottom: 1.25rem;
 }

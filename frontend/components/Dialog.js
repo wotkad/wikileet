@@ -1,8 +1,7 @@
-import { escapeHtml } from '../../utils/utils.js';
+import { escapeHtml } from '../utils/utils.js';
 
 export function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
     return new Promise((resolve) => {
-        // Удаляем существующий диалог если есть
         const existingDialog = document.getElementById('confirm-dialog');
         if (existingDialog) {
             existingDialog.remove();
@@ -44,7 +43,6 @@ export function showConfirmDialog(title, message, confirmText = 'Confirm', cance
         cancelBtn.onclick = () => closeDialog(false);
         okBtn.onclick = () => closeDialog(true);
         
-        // Клик вне диалога
         dialog.onclick = (e) => {
             if (e.target === dialog) {
                 closeDialog(false);
@@ -90,6 +88,63 @@ export function showAlertDialog(title, message, buttonText = 'OK') {
         };
         
         okBtn.onclick = () => closeDialog();
+        dialog.onclick = (e) => {
+            if (e.target === dialog) {
+                closeDialog();
+            }
+        };
+    });
+}
+
+// Функция для показа предпросмотра статьи
+export function showPreviewDialog(title, content) {
+    return new Promise((resolve) => {
+        const existingDialog = document.getElementById('preview-dialog');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        
+        const dialog = document.createElement('div');
+        dialog.id = 'preview-dialog';
+        dialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        dialog.innerHTML = `
+            <div class="bg-gray-800 rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <h3 class="text-xl font-bold">Предпросмотр: ${escapeHtml(title)}</h3>
+                    <button id="preview-close" class="text-gray-400 hover:text-gray-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto prose max-w-none">
+                    ${content}
+                </div>
+                <div class="p-4 border-t border-gray-700 flex justify-end">
+                    <button id="preview-close-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        const closeDialog = () => {
+            dialog.classList.add('opacity-0');
+            setTimeout(() => {
+                if (dialog.parentNode) {
+                    dialog.remove();
+                }
+                resolve();
+            }, 200);
+        };
+        
+        const closeBtn = dialog.querySelector('#preview-close');
+        const closeBtn2 = dialog.querySelector('#preview-close-btn');
+        
+        closeBtn.onclick = closeDialog;
+        closeBtn2.onclick = closeDialog;
         dialog.onclick = (e) => {
             if (e.target === dialog) {
                 closeDialog();
