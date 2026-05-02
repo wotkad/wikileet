@@ -75,6 +75,25 @@ function initReadingProgress() {
     setTimeout(updateReadingProgress, 100);
 }
 
+// Функция для привязки обработчика копирования
+function initCopyButton() {
+    const copyBtn = document.getElementById('copyArticleBtn');
+    if (copyBtn) {
+        // Убираем старый обработчик
+        const newCopyBtn = copyBtn.cloneNode(true);
+        copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
+        
+        newCopyBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const url = newCopyBtn.dataset.url;
+            const title = newCopyBtn.dataset.title;
+            if (url) {
+                await copyToClipboard(url, `Ссылка на "${title}" скопирована!`);
+            }
+        });
+    }
+}
+
 export default async function ArticlePage(params) {
     try {
         const state = getState();
@@ -105,11 +124,10 @@ export default async function ArticlePage(params) {
         
         const similarArticles = (similar || []).slice(0, PAGINATION.SIMILAR_ARTICLES_LIMIT);
         
-        setTimeout(initReadingProgress, 100);
-        
         const articleUrl = `${window.location.origin}/wiki/${article.slug}`;
         
-        return `
+        // Возвращаем HTML
+        const html = `
             <article class="mx-auto relative">
                 <!-- Прогресс-бар чтения -->
                 <div id="reading-progress-container" class="fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 transform translate-y-full opacity-0">
@@ -172,6 +190,14 @@ export default async function ArticlePage(params) {
                 ` : ''}
             </article>
         `;
+        
+        // Инициализируем обработчики после рендера
+        setTimeout(() => {
+            initReadingProgress();
+            initCopyButton();
+        }, 50);
+        
+        return html;
     } catch (error) {
         console.error('Ошибка загрузки статьи:', error);
         return `
@@ -182,18 +208,3 @@ export default async function ArticlePage(params) {
         `;
     }
 }
-
-// Обработчик кнопки "Копировать ссылку" на странице статьи
-setTimeout(() => {
-    const copyBtn = document.getElementById('copyArticleBtn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const url = copyBtn.dataset.url;
-            const title = copyBtn.dataset.title;
-            if (url) {
-                await copyToClipboard(url, `Ссылка на "${title}" скопирована!`);
-            }
-        });
-    }
-}, 100);
