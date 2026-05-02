@@ -44,6 +44,7 @@ async function updateFavoriteOnServer(articleId, isFavorited) {
 function updateAllButtons(articleId, isFavorited) {
     const allButtons = document.querySelectorAll(`.favorite-btn[data-id="${articleId}"]`);
     allButtons.forEach(btn => {
+        btn.classList.remove('hidden');
         btn.dataset.favorited = String(isFavorited);
         if (isFavorited) {
             btn.classList.remove('text-gray-500', 'hover:text-yellow-400');
@@ -136,4 +137,33 @@ export default function FavoriteButton(articleId) {
     }
     
     return renderIcon();
+}
+
+export function clearFavoritesState() {
+    // Очищаем Set
+    favoritesSet.clear();
+    isLoading = false;
+    loadPromise = null;
+    isInitialized = false;
+    
+    // Обновляем все кнопки на странице
+    const allButtons = document.querySelectorAll('.favorite-btn');
+    allButtons.forEach(btn => {
+        btn.classList.add('hidden');
+        btn.dataset.favorited = 'false';
+        btn.classList.remove('text-yellow-400');
+        btn.classList.add('text-gray-500', 'hover:text-yellow-400');
+        const svg = btn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', 'none');
+    });
+    
+    // Оповещаем об очистке
+    window.dispatchEvent(new CustomEvent('favorites:cleared'));
+}
+
+if (!window.favoritesLogoutListener) {
+    window.favoritesLogoutListener = true;
+    window.addEventListener('user:logout', () => {
+        clearFavoritesState();
+    });
 }

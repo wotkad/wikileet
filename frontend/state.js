@@ -1,4 +1,5 @@
 import { getCategories, getTags, getUser } from './api.js';
+import { clearFavoritesState } from './components/FavoriteButton.js';
 
 let state = {
     currentUser: null,
@@ -7,6 +8,19 @@ let state = {
 };
 
 const listeners = [];
+
+async function updateUI() {
+    try {
+        const { updateHeaderUser } = await import('./components/Header.js');
+        if (updateHeaderUser) updateHeaderUser();
+        
+        // Добавьте обновление сайдбара
+        const { updateSidebar } = await import('./components/Sidebar.js');
+        if (updateSidebar) updateSidebar();
+    } catch (e) {
+        // Игнорируем ошибки импорта
+    }
+}
 
 export function getState() {
     return { ...state };
@@ -29,19 +43,12 @@ export function setAuth(user) {
 export function clearAuth() {
     console.log('Clearing auth');
     setState({ currentUser: null });
+    clearFavoritesState();
+    updateUI();
 }
 
 export function subscribe(listener) {
     listeners.push(listener);
-}
-
-async function updateUI() {
-    try {
-        const { updateHeaderUser } = await import('./components/Header.js');
-        if (updateHeaderUser) updateHeaderUser();
-    } catch (e) {
-        // Игнорируем
-    }
 }
 
 export async function initState() {

@@ -40,8 +40,10 @@ export async function logout() {
         console.log('auth.logout called');
         await apiLogout();
         clearAuth();
+        window.dispatchEvent(new CustomEvent('user:logout'));
     } catch (error) {
         console.error('Logout error:', error);
         clearAuth();
+        window.dispatchEvent(new CustomEvent('user:logout'));
     }
 }
