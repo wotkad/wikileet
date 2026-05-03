@@ -1,8 +1,9 @@
+// user-profile.js
 import { getUserBySlug, getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION, UPLOAD, USER_ROLES, USER_ROLES_TITLE } from '../constants.js';
+import { PAGINATION, UPLOAD, USER_ROLES, USER_ROLES_TITLE, USER_ROLES_CLASS } from '../constants.js';
 import { getState } from '../state.js';
 
 let currentPage = 1;
@@ -32,7 +33,13 @@ async function changeUserRole(userId, newRole) {
         }
 
         const data = await response.json();
-        window.toast?.success(`Роль пользователя изменена на ${newRole === USER_ROLES.ADMIN ? 'Администратора' : 'Пользователя'}`);
+        
+        let roleDisplay = '';
+        if (newRole === USER_ROLES.ADMIN) roleDisplay = 'Администратора';
+        else if (newRole === USER_ROLES.SUPERADMIN) roleDisplay = 'СуперАдмина';
+        else roleDisplay = 'Пользователя';
+        
+        window.toast?.success(`Роль пользователя изменена на ${roleDisplay}`);
         
         // Обновляем текущего пользователя
         currentUser = data.user;
@@ -52,23 +59,56 @@ function canEditRoles(targetUser) {
     
     if (!loggedInUser) return false;
     
-    // Только admin может менять роли
-    if (loggedInUser.role !== 'admin') return false;
-    
     // Нельзя менять свою роль
     if (loggedInUser._id === targetUser._id) return false;
     
-    return true;
+    // Нельзя менять роль суперадмина (никто не может)
+    if (targetUser.role === USER_ROLES.SUPERADMIN) return false;
+    
+    // Суперадмин может менять роли admin и user
+    if (loggedInUser.role === USER_ROLES.SUPERADMIN) {
+        return true;
+    }
+    
+    // Админ может менять роли только у обычных пользователей
+    if (loggedInUser.role === USER_ROLES.ADMIN) {
+        // Админ не может менять роль другого админа
+        if (targetUser.role === USER_ROLES.ADMIN) return false;
+        // Админ не может менять роль суперадмина
+        if (targetUser.role === USER_ROLES.SUPERADMIN) return false;
+        // Админ может менять роль только у обычных пользователей
+        return targetUser.role === USER_ROLES.USER;
+    }
+    
+    return false;
 }
 
-// Функция для отображения выпадающего списка ролей (только для admin)
+// Функция для получения доступных опций ролей
+function getAvailableRoles(targetUser, loggedInUser) {
+    const roles = [];
+    
+    if (loggedInUser.role === USER_ROLES.SUPERADMIN) {
+        // Суперадмин может назначать user и admin
+        roles.push({ value: USER_ROLES.USER, label: USER_ROLES_TITLE.user });
+        roles.push({ value: USER_ROLES.ADMIN, label: USER_ROLES_TITLE.admin });
+    } else if (loggedInUser.role === USER_ROLES.ADMIN) {
+        // Админ может менять роли у обычных пользователей
+        // Показываем обе опции для выбора
+        roles.push({ value: USER_ROLES.USER, label: USER_ROLES_TITLE.user });
+        roles.push({ value: USER_ROLES.ADMIN, label: USER_ROLES_TITLE.admin });
+    }
+    
+    return roles;
+}
+
+// Функция для отображения выпадающего списка ролей
 function renderRoleSelector(user) {
     const state = getState();
     const loggedInUser = state.currentUser;
     const canEdit = canEditRoles(user);
     
-    const roleDisplay = user.role === USER_ROLES.ADMIN ? USER_ROLES_TITLE.ADMIN : USER_ROLES_TITLE.USER;
-    const roleBadgeClass = user.role === USER_ROLES.ADMIN ? 'bg-purple-900 text-purple-300' : 'bg-blue-800 text-blue-300';
+    const roleDisplay = USER_ROLES_TITLE[user.role] || USER_ROLES_TITLE.user;
+    const roleBadgeClass = USER_ROLES_CLASS[user.role] || USER_ROLES_CLASS.user;
     
     if (!canEdit) {
         return `
@@ -78,12 +118,16 @@ function renderRoleSelector(user) {
         `;
     }
     
-    // Для admin показываем выпадающий список
+    const availableRoles = getAvailableRoles(user, loggedInUser);
+    
     return `
         <div class="relative inline-block">
             <select id="role-select" class="px-3 py-1 bg-gray-700 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                <option value="user" ${user.role === USER_ROLES.USER ? 'selected' : ''}>${USER_ROLES_TITLE.USER}</option>
-                <option value="admin" ${user.role === USER_ROLES.ADMIN ? 'selected' : ''}>${USER_ROLES_TITLE.ADMIN}</option>
+                ${availableRoles.map(role => `
+                    <option value="${role.value}" ${user.role === role.value ? 'selected' : ''}>
+                        ${role.label}
+                    </option>
+                `).join('')}
             </select>
         </div>
     `;
@@ -145,7 +189,8 @@ function renderUserProfilePage(user, allArticles) {
         
         newRoleSelect.addEventListener('change', async (e) => {
             const newRole = e.target.value;
-            const confirmed = confirm(`Вы уверены, что хотите изменить роль пользователя ${user.name} на ${newRole === USER_ROLES.ADMIN ? 'Администратора' : 'Пользователя'}?`);
+            const roleName = newRole === USER_ROLES.ADMIN ? 'Администратора' : 'Пользователя';
+            const confirmed = confirm(`Вы уверены, что хотите изменить роль пользователя ${user.name} на ${roleName}?`);
             
             if (confirmed) {
                 await changeUserRole(user._id, newRole);

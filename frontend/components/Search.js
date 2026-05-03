@@ -99,8 +99,8 @@ async function fetchSuggestions(query, type) {
     }
 }
 
-function renderSuggestions(suggestions, type) {
-    const container = document.getElementById('search-suggestions');
+function renderSuggestions(suggestions, type, suggestionsId) {
+    const container = document.getElementById(suggestionsId);
     if (!container) return;
     
     if (!suggestions || suggestions.length === 0) {
@@ -155,48 +155,48 @@ function renderSuggestions(suggestions, type) {
     }
 }
 
-function hideSuggestions() {
-    const container = document.getElementById('search-suggestions');
+function hideSuggestions(suggestionsId) {
+    const container = document.getElementById(suggestionsId);
     if (container) {
         container.classList.add('hidden');
     }
     selectedSuggestionIndex = -1;
 }
 
-function showSuggestions() {
-    const container = document.getElementById('search-suggestions');
+function showSuggestions(suggestionsId) {
+    const container = document.getElementById(suggestionsId);
     if (container && currentSuggestions && currentSuggestions.length > 0) {
         container.classList.remove('hidden');
     }
 }
 
-function handleKeyboardNavigation(e, suggestions, type) {
+function handleKeyboardNavigation(e, suggestions, type, suggestionsId) {
     if (!suggestions || suggestions.length === 0) return false;
     
     switch (e.key) {
         case 'ArrowDown':
             e.preventDefault();
             selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
-            renderSuggestions(suggestions, type);
+            renderSuggestions(suggestions, type, suggestionsId);
             return true;
         case 'ArrowUp':
             e.preventDefault();
             selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-            renderSuggestions(suggestions, type);
+            renderSuggestions(suggestions, type, suggestionsId);
             return true;
         case 'Enter':
             if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
                 e.preventDefault();
                 const selected = suggestions[selectedSuggestionIndex];
                 if (window.router) {
-                    hideSuggestions();
+                    hideSuggestions(suggestionsId);
                     window.router.navigate(selected.url);
                 }
                 return true;
             }
             return false;
         case 'Escape':
-            hideSuggestions();
+            hideSuggestions(suggestionsId);
             return true;
         default:
             return false;
@@ -208,6 +208,7 @@ export function renderSearchInput(options) {
         id = 'searchInput',
         placeholder = 'Поиск...',
         initialValue = '',
+        suggestionsId = 'search-suggestions',
         className = 'w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
     } = options;
     
@@ -219,7 +220,7 @@ export function renderSearchInput(options) {
                    autocomplete="off"
                    value="${escapeHtml(initialValue)}"
                    class="${className}">
-            <div id="search-suggestions" class="absolute z-50 w-full mt-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden">
+            <div id="${suggestionsId}" class="absolute z-50 w-full mt-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden">
             </div>
         </div>
     `;
@@ -229,7 +230,9 @@ export function initSearchInput(options) {
     const {
         id = 'searchInput',
         onSearch,
-        type = 'articles'
+        type = 'articles',
+        submitOnly = false,
+        suggestionsId = 'search-suggestions'
     } = options;
     
     const searchInput = document.getElementById(id);
@@ -241,12 +244,12 @@ export function initSearchInput(options) {
     
     newSearchInput.value = currentValue;
     
-    let suggestionsContainer = document.getElementById('search-suggestions');
+    let suggestionsContainer = document.getElementById(suggestionsId);
     if (!suggestionsContainer) {
         const wrapper = newSearchInput.closest('.relative');
         if (wrapper) {
             const container = document.createElement('div');
-            container.id = 'search-suggestions';
+            container.id = suggestionsId;
             container.className = 'absolute z-50 w-full mt-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden hidden';
             wrapper.appendChild(container);
             suggestionsContainer = container;
@@ -256,7 +259,7 @@ export function initSearchInput(options) {
     const updateSuggestions = async (query) => {
         currentQuery = query;
         if (!query || query.length < 2) {
-            hideSuggestions();
+            hideSuggestions(suggestionsId);
             currentSuggestions = [];
             return;
         }
@@ -264,45 +267,49 @@ export function initSearchInput(options) {
         currentSuggestions = await fetchSuggestions(query, type);
         currentSuggestionType = type;
         selectedSuggestionIndex = -1;
-        renderSuggestions(currentSuggestions, type);
+        renderSuggestions(currentSuggestions, type, suggestionsId);
     };
     
     const debouncedSuggestions = debounce(updateSuggestions, 300);
     
     newSearchInput.addEventListener('input', (e) => {
         const value = e.target.value;
-        debouncedSuggestions(value);
-        
-        if (onSearch && typeof onSearch === 'function') {
-            onSearch(value);
+        if (!submitOnly) {
+            debouncedSuggestions(value);
+            
+            if (onSearch && typeof onSearch === 'function') {
+                onSearch(value);
+            }
+        } else {
+            debouncedSuggestions(value);
         }
     });
     
     newSearchInput.addEventListener('focus', () => {
         if (currentSuggestions && currentSuggestions.length > 0 && currentQuery && currentQuery.length >= 2) {
-            showSuggestions();
+            showSuggestions(suggestionsId);
         }
     });
     
     newSearchInput.addEventListener('keydown', (e) => {
-        const handled = handleKeyboardNavigation(e, currentSuggestions, type);
+        const handled = handleKeyboardNavigation(e, currentSuggestions, type, suggestionsId);
         if (handled) {
             e.preventDefault();
             return;
         }
         
-        if (e.key === 'Enter' && selectedSuggestionIndex === -1) {
+        if (e.key === 'Enter') {
             e.preventDefault();
             if (onSearch && typeof onSearch === 'function') {
                 onSearch(e.target.value);
-                hideSuggestions();
+                hideSuggestions(suggestionsId);
             }
         }
     });
     
     newSearchInput.addEventListener('blur', () => {
         setTimeout(() => {
-            hideSuggestions();
+            hideSuggestions(suggestionsId);
         }, 200);
     });
     

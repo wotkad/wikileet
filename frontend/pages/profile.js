@@ -3,7 +3,7 @@ import { getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION, USER_ROLES, USER_ROLES_TITLE } from '../constants.js';
+import { PAGINATION, USER_ROLES, USER_ROLES_TITLE, USER_ROLES_CLASS } from '../constants.js';
 import { loadFavorites } from '../components/FavoriteButton.js';
 import { initAvatarUpload } from '../components/AvatarUpload.js';
 
@@ -50,6 +50,28 @@ function renderFavoritesList() {
     return paginatedFavorites.map(article => ArticleCard(article)).join('');
 }
 
+// Функция для получения отображаемого названия роли
+function getRoleDisplay(role) {
+    if (role === USER_ROLES.SUPERADMIN) {
+        return USER_ROLES_TITLE.superadmin || '👑 СуперАдмин';
+    }
+    if (role === USER_ROLES.ADMIN) {
+        return USER_ROLES_TITLE.admin || '👨‍💼 Администратор';
+    }
+    return USER_ROLES_TITLE.user || '👤 Пользователь';
+}
+
+// Функция для получения CSS класса роли
+function getRoleClass(role) {
+    if (role === USER_ROLES.SUPERADMIN) {
+        return USER_ROLES_CLASS.superadmin || 'bg-red-900 text-red-300';
+    }
+    if (role === USER_ROLES.ADMIN) {
+        return USER_ROLES_CLASS.admin || 'bg-purple-900 text-purple-300';
+    }
+    return USER_ROLES_CLASS.user || 'bg-blue-800 text-blue-300';
+}
+
 async function renderProfilePage() {
     const container = document.getElementById('profile-content');
     if (!container) return;
@@ -65,6 +87,9 @@ async function renderProfilePage() {
     
     const registeredDate = formatDate(user.createdAt);
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}?t=${Date.now()}` : '/api/profile/avatar/default-avatar.png';
+    
+    const roleDisplay = getRoleDisplay(user.role);
+    const roleClass = getRoleClass(user.role);
     
     container.innerHTML = `
         <div class="mx-auto">
@@ -91,8 +116,8 @@ async function renderProfilePage() {
                         <h1 class="text-3xl font-bold" id="user-name-display">${escapeHtml(user.name)}</h1>
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
-                            <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
-                                ${user.role === USER_ROLES.ADMIN ? USER_ROLES_TITLE.ADMIN : USER_ROLES_TITLE.USER}
+                            <span class="px-3 py-1 ${roleClass} rounded-full text-sm">
+                                ${roleDisplay}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
                                 📅 Зарегистрирован: ${registeredDate}

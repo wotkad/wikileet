@@ -495,10 +495,12 @@ export default async function WikiPage() {
             
             <div class="mb-6">
                 ${renderSearchInput({
-                    id: 'searchInput',
+                    id: 'wiki-search-input',
+                    suggestionsId: 'wiki-search-suggestions',
                     placeholder: 'Введите название или описание',
                     initialValue: currentFilters.search
                 })}
+
             </div>
             
             <div class="grid grid-cols-1 gap-4" id="articles-list">
@@ -559,7 +561,8 @@ function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, d
 
 window.initWikiEvents = function() {
     initSearchInput({
-        id: 'searchInput',
+        id: 'wiki-search-input',
+        suggestionsId: 'wiki-search-suggestions',
         onSearch: (searchValue) => {
             currentFilters.search = searchValue;
             currentFilters.page = 1;

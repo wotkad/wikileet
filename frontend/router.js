@@ -1,3 +1,4 @@
+// router.js
 import { initState, getState } from './state.js';
 import HomePage from './pages/home.js';
 import WikiPage from './pages/wiki.js';
@@ -14,7 +15,7 @@ import { initSidebarEvents } from './components/Sidebar.js';
 import { initAvatarUpload } from './components/AvatarUpload.js';
 import UsersPage from './pages/users.js';
 import MediaPage from './pages/media.js';
-import { USER_ROLES } from './constants.js';
+import { USER_ROLES, hasAdminAccess } from './constants.js';
 
 const routes = {
     '/': HomePage,
@@ -203,25 +204,25 @@ const router = {
             return;
         }
 
-        // Защита чужих профилей (только админы)
+        // Защита чужих профилей (только админы и суперадмины)
         if (path.startsWith('/profile/') && path !== '/profile') {
-            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
+            if (!state.currentUser || !hasAdminAccess(state.currentUser)) {
                 this.navigate('/login');
                 return;
             }
         }
 
-        // Проверка для админки
+        // Проверка для админки (admin или superadmin)
         if (path.startsWith('/admin')) {
-            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
+            if (!state.currentUser || !hasAdminAccess(state.currentUser)) {
                 this.navigate('/login');
                 return;
             }
         }
 
-        // Проверка для страницы пользователей (только админы)
+        // Проверка для страницы пользователей (admin или superadmin)
         if (path === '/users') {
-            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
+            if (!state.currentUser || !hasAdminAccess(state.currentUser)) {
                 this.navigate('/login');
                 return;
             }
@@ -232,8 +233,9 @@ const router = {
             return;
         }
 
+        // Проверка для страницы медиатеки (admin или superadmin)
         if (path === '/media') {
-            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
+            if (!state.currentUser || !hasAdminAccess(state.currentUser)) {
                 this.navigate('/login');
                 return;
             } else {
@@ -248,6 +250,10 @@ const router = {
         const content = await Component(params);
         const layout = Layout(content);
         app.innerHTML = layout;
+
+        if (window.initHeaderSearch) {
+            window.initHeaderSearch();
+        }
         
         updateHeaderUser();
         initSidebarEvents();

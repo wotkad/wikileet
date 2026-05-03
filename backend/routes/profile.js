@@ -183,10 +183,10 @@ router.put('/user/:userId/role', authMiddleware, async (req, res) => {
         const { userId } = req.params;
         const { role } = req.body;
         
-        // Проверяем, что текущий пользователь admin
+        // Находим текущего пользователя
         const currentUser = await User.findById(req.userId);
-        if (!currentUser || currentUser.role !== 'admin') {
-            return res.status(403).json({ error: 'Only admin can change user roles' });
+        if (!currentUser) {
+            return res.status(401).json({ error: 'User not found' });
         }
         
         // Находим целевого пользователя
@@ -200,9 +200,30 @@ router.put('/user/:userId/role', authMiddleware, async (req, res) => {
             return res.status(403).json({ error: 'Cannot change your own role' });
         }
         
-        // Проверяем допустимость роли
-        if (!['user', 'admin'].includes(role)) {
-            return res.status(400).json({ error: 'Invalid role' });
+        // Нельзя изменить роль суперадмина (никто не может)
+        if (targetUser.role === 'superadmin') {
+            return res.status(403).json({ error: 'Cannot change superadmin role' });
+        }
+        
+        // Проверяем права доступа
+        if (currentUser.role === 'superadmin') {
+            // Суперадмин может менять роли admin и user
+            if (!['user', 'admin'].includes(role)) {
+                return res.status(400).json({ error: 'Invalid role' });
+            }
+        } 
+        else if (currentUser.role === 'admin') {
+            // Админ может менять роли только у обычных пользователей
+            if (targetUser.role !== 'user' && targetUser.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin can only change roles of regular users' });
+            }
+            // Админ может назначать как user, так и admin
+            if (!['user', 'admin'].includes(role)) {
+                return res.status(400).json({ error: 'Invalid role' });
+            }
+        }
+        else {
+            return res.status(403).json({ error: 'No permission to change roles' });
         }
         
         // Обновляем роль
@@ -259,7 +280,7 @@ router.get('/user/by-slug/:slug', authMiddleware, async (req, res) => {
         
         // Проверяем: если это не свой профиль и не админ - запрещаем
         const isOwnProfile = user._id.toString() === currentUserId;
-        const isAdmin = req.userRole === 'admin';
+        const isAdmin = req.userRole === 'admin' || req.userRole === 'superadmin';
         
         if (!isOwnProfile && !isAdmin) {
             return res.status(403).json({ error: 'Access denied. Only admins can view other profiles.' });
@@ -339,14 +360,47 @@ router.get('/users/stats', authMiddleware, async (req, res) => {
         const totalUsers = await User.countDocuments();
         const adminCount = await User.countDocuments({ role: 'admin' });
         const userCount = await User.countDocuments({ role: 'user' });
+        const superadminCount = await User.countDocuments({ role: 'superadmin' });
         
         res.json({
             totalUsers,
             adminCount,
             userCount,
+            superadminCount,
         });
     } catch (error) {
         console.error('Error getting user stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Обновите GET /api/profile/user/by-slug/:slug эндпоинт (добавить поддержку superadmin)
+router.get('/user/by-slug/:slug', authMiddleware, async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const currentUserId = req.userId;
+        const currentUserRole = req.userRole;
+        
+        // Ищем пользователя
+        const user = await User.findOne({ slug }).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Проверяем: если это не свой профиль и не admin/superadmin - запрещаем
+        const isOwnProfile = user._id.toString() === currentUserId;
+        const hasAccess = isOwnProfile || currentUserRole === 'admin' || currentUserRole === 'superadmin';
+        
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied. Only admins can view other profiles.' });
+        }
+        
+        console.log(`User found: ${user.name}, role: ${user.role}`);
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Error getting user by slug:', error);
         res.status(500).json({ error: error.message });
     }
 });

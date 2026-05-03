@@ -1,6 +1,12 @@
 import { getState } from '../state.js';
 import { UPLOAD, USER_ROLES } from '../constants.js';
 import { escapeHtml } from '../utils/utils.js';
+import { renderSearchInput, initSearchInput } from './Search.js';
+
+// Функция для проверки доступа к админ-панели (admin или superadmin)
+function hasAdminAccess(user) {
+    return user && (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPERADMIN);
+}
 
 export default function Header() {
     const state = getState();
@@ -18,6 +24,14 @@ export default function Header() {
                         📚 База знаний
                     </a>
                 </div>
+                <div class="flex-1 max-w-md mx-4">
+                    ${renderSearchInput({
+                        id: 'header-search-input',
+                        suggestionsId: 'header-search-suggestions',
+                        placeholder: 'Поиск статей...',
+                        className: 'w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    })}
+                </div>
                 <div class="flex items-center gap-x-2" id="header-user-section">
                     ${renderUserSection(state.currentUser)}
                 </div>
@@ -33,12 +47,13 @@ function renderUserSection(user) {
                 Войти
             </a>
             <a href="/register" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">
-                Зарегестироваться
+                Зарегистрироваться
             </a>
         `;
     }
     
     const avatarUrl = user?.avatar ? `/api/profile/avatar/${user.avatar}` : UPLOAD.DEFAULT_AVATAR;
+    const showAdminPanel = hasAdminAccess(user);
     
     return `
         <div class="relative group">
@@ -54,7 +69,7 @@ function renderUserSection(user) {
                     <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                         👤 Профиль
                     </a>
-                    ${user.role === USER_ROLES.ADMIN ? `
+                    ${showAdminPanel ? `
                         <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                             ⚙️ Админ панель
                         </a>
@@ -67,6 +82,23 @@ function renderUserSection(user) {
             </div>
         </div>
     `;
+}
+
+// Функция для инициализации поиска в хедере
+export function initHeaderSearch() {
+    initSearchInput({
+        id: 'header-search-input',
+        suggestionsId: 'header-search-suggestions',
+        onSearch: (searchValue) => {
+            if (searchValue && searchValue.trim()) {
+                window.router.navigate(`/wiki?search=${encodeURIComponent(searchValue.trim())}`);
+            } else {
+                window.router.navigate('/wiki');
+            }
+        },
+        submitOnly: true,
+        type: 'articles'
+    });
 }
 
 // Функция updateHeaderUser в Header.js
@@ -91,4 +123,8 @@ export function updateHeaderUser() {
             };
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.initHeaderSearch = initHeaderSearch;
 }

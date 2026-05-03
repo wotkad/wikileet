@@ -1,7 +1,8 @@
-import { PAGINATION, SEARCH, UPLOAD, USER_ROLES, USER_ROLES_TITLE } from '../constants.js';
+import { PAGINATION, SEARCH, UPLOAD, USER_ROLES, USER_ROLES_TITLE, USER_ROLES_CLASS } from '../constants.js';
 import { escapeHtml, debounce, formatDate, getArticlesDeclension, getViewsDeclension, getUsersDeclension } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { renderSearchInput, initSearchInput } from '../components/Search.js';
+import { getState } from '../state.js';
 
 let currentFilters = {
     search: '',
@@ -90,7 +91,7 @@ async function getUserStats() {
     });
     
     if (!response.ok) {
-        return { totalUsers: 0, adminCount: 0, userCount: 0 };
+        return { totalUsers: 0, adminCount: 0, userCount: 0, superadminCount: 0 };
     }
     
     return response.json();
@@ -104,6 +105,8 @@ function renderUsersList(users) {
     return users.map(user => {
         const articlesText = getArticlesDeclension(user.articlesCount);
         const viewsText = getViewsDeclension(user.totalViews);
+        const roleClass = USER_ROLES_CLASS[user.role] || USER_ROLES_CLASS.user;
+        const roleTitle = USER_ROLES_TITLE[user.role] || USER_ROLES_TITLE.user;
         
         return `
             <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition">
@@ -116,10 +119,9 @@ function renderUsersList(users) {
                             <a href="/profile/${user.slug}" class="text-lg font-semibold hover:text-blue-400 transition">
                                 ${escapeHtml(user.name)}
                             </a>
-                            ${user.role === USER_ROLES.ADMIN ? 
-                                `<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">${USER_ROLES_TITLE.ADMIN}</span>` : 
-                                `<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">${USER_ROLES_TITLE.USER}</span>`
-                            }
+                            <span class="px-2 py-0.5 ${roleClass} rounded-full text-xs">
+                                ${roleTitle}
+                            </span>
                         </div>
                         <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
                         <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
@@ -164,7 +166,8 @@ export default async function UsersPage() {
                     <div>
                         <label class="block text-sm font-medium mb-2">Поиск по имени</label>
                         ${renderSearchInput({
-                            id: 'searchInput',
+                            id: 'users-search-input',
+                            suggestionsId: 'users-search-suggestions',
                             placeholder: 'Введите имя',
                             initialValue: currentFilters.search,
                             className: 'w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -176,6 +179,7 @@ export default async function UsersPage() {
                             <option value="all" ${currentFilters.role === 'all' ? 'selected' : ''}>Все пользователи</option>
                             <option value="admin" ${currentFilters.role === USER_ROLES.ADMIN ? 'selected' : ''}>Администраторы</option>
                             <option value="user" ${currentFilters.role === USER_ROLES.USER ? 'selected' : ''}>Пользователи</option>
+                            <option value="superadmin" ${currentFilters.role === USER_ROLES.SUPERADMIN ? 'selected' : ''}>СуперАдмины</option>
                         </select>
                     </div>
                     <div>
@@ -202,9 +206,10 @@ export default async function UsersPage() {
 }
 
 window.initUsersPage = function() {
-    // Инициализация поиска
+    // Инициализация поиска с уникальным suggestionsId
     initSearchInput({
-        id: 'searchInput',
+        id: 'users-search-input',
+        suggestionsId: 'users-search-suggestions',
         onSearch: onSearch,
         type: 'users'
     });

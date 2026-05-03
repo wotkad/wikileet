@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
     slug: {
         type: String,
         unique: true,
-        sparse: true, // Позволяет быть null, но уникальным если есть значение
+        sparse: true,
     },
     email: {
         type: String,
@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['user', 'admin'],
+        enum: ['user', 'admin', 'superadmin'],
         default: 'user',
     },
     createdAt: {

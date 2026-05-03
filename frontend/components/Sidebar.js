@@ -1,10 +1,16 @@
 // Sidebar.js
 import { escapeHtml } from '../utils/utils.js';
 import { getState, subscribe } from '../state.js';
+import { USER_ROLES } from '../constants.js';
+
+// Функция для проверки доступа к админ-панели (admin или superadmin)
+function hasAdminAccess(user) {
+    return user && (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPERADMIN);
+}
 
 // Функция для рендеринга сайдбара
 function renderSidebarContent(user) {
-    const isAdmin = user?.role === 'admin';
+    const showAdminLinks = hasAdminAccess(user);
     
     return `
         <div class="p-4 space-y-6">
@@ -18,7 +24,7 @@ function renderSidebarContent(user) {
                         <span>📚</span>
                         <span>Записи</span>
                     </a>
-                    ${isAdmin ? `
+                    ${showAdminLinks ? `
                         <a href="/users" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
                             <span>👥</span>
                             <span>Пользователи</span>
@@ -40,7 +46,7 @@ export function updateSidebar() {
     if (!sidebar) return;
     
     const state = getState();
-    const isAdmin = state.currentUser?.role === 'admin';
+    const showAdminLinks = hasAdminAccess(state.currentUser);
     
     // Находим контейнер с ссылками
     const linksContainer = sidebar.querySelector('.space-y-2');
@@ -59,7 +65,7 @@ export function updateSidebar() {
     `;
     
     // Админские ссылки
-    const adminLinks = isAdmin ? `
+    const adminLinks = showAdminLinks ? `
         <a href="/users" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
             <span>👥</span>
             <span>Пользователи</span>
