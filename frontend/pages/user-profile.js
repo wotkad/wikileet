@@ -1,10 +1,10 @@
-// user-profile.js
 import { getUserBySlug, getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { PAGINATION, UPLOAD, USER_ROLES, USER_ROLES_TITLE, USER_ROLES_CLASS } from '../constants.js';
 import { getState } from '../state.js';
+import { showConfirmDialog } from '../components/Dialog.js';
 
 let currentPage = 1;
 let currentUser = null;
@@ -16,7 +16,7 @@ function onPageChange(page) {
 }
 
 // Функция для изменения роли пользователя
-async function changeUserRole(userId, newRole) {
+async function changeUserRole(userId, newRole, userName) {
     try {
         const response = await fetch(`/api/profile/user/${userId}/role`, {
             method: 'PUT',
@@ -39,7 +39,7 @@ async function changeUserRole(userId, newRole) {
         else if (newRole === USER_ROLES.SUPERADMIN) roleDisplay = 'СуперАдмина';
         else roleDisplay = 'Пользователя';
         
-        window.toast?.success(`Роль пользователя изменена на ${roleDisplay}`);
+        window.toast?.success(`Роль пользователя ${userName} изменена на ${roleDisplay}`);
         
         // Обновляем текущего пользователя
         currentUser = data.user;
@@ -93,7 +93,6 @@ function getAvailableRoles(targetUser, loggedInUser) {
         roles.push({ value: USER_ROLES.ADMIN, label: USER_ROLES_TITLE.admin });
     } else if (loggedInUser.role === USER_ROLES.ADMIN) {
         // Админ может менять роли у обычных пользователей
-        // Показываем обе опции для выбора
         roles.push({ value: USER_ROLES.USER, label: USER_ROLES_TITLE.user });
         roles.push({ value: USER_ROLES.ADMIN, label: USER_ROLES_TITLE.admin });
     }
@@ -190,10 +189,18 @@ function renderUserProfilePage(user, allArticles) {
         newRoleSelect.addEventListener('change', async (e) => {
             const newRole = e.target.value;
             const roleName = newRole === USER_ROLES.ADMIN ? 'Администратора' : 'Пользователя';
-            const confirmed = confirm(`Вы уверены, что хотите изменить роль пользователя ${user.name} на ${roleName}?`);
+            const currentRoleName = user.role === USER_ROLES.ADMIN ? 'Администратора' : 'Пользователя';
+            
+            // Используем showConfirmDialog из Dialog.js
+            const confirmed = await showConfirmDialog(
+                'Подтверждение смены роли',
+                `Вы уверены, что хотите изменить роль пользователя "${user.name}" с ${currentRoleName} на ${roleName}?`,
+                'Да, изменить',
+                'Отмена'
+            );
             
             if (confirmed) {
-                await changeUserRole(user._id, newRole);
+                await changeUserRole(user._id, newRole, user.name);
             } else {
                 // Возвращаем предыдущее значение
                 newRoleSelect.value = user.role;
