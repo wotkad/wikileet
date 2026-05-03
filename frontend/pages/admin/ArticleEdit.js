@@ -2,6 +2,7 @@ import { getArticle, createArticle, updateArticle, getCategories, getTags, getUs
 import { showConfirmDialog, showPreviewDialog } from '../../components/Dialog.js';
 import { escapeHtml, generateSlug, isValidSlug, formatDate } from '../../utils/utils.js';
 import '../../components/Toast.js';
+import { ARTICLE_STATUS, ARTICLE_STATUS_TITLE } from '../../constants.js';
 
 let simplemde = null;
 
@@ -59,7 +60,7 @@ export default async function ArticleEditPage(params) {
         console.error('Error loading data:', error);
     }
     
-    const currentStatus = article?.status || 'draft';
+    const currentStatus = article?.status || ARTICLE_STATUS.DRAFT;
     const currentAuthor = article?.author?._id || '';
     const currentPublishDate = article?.publishedAt ? formatDate(article.publishedAt) : '';
     const previewUrl = isEdit && article?.slug ? `/wiki/${article.slug}` : '#';
@@ -155,8 +156,8 @@ export default async function ArticleEditPage(params) {
                     <div>
                         <label class="block text-sm font-medium mb-2">Статус</label>
                         <select id="status" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="draft" ${currentStatus === 'draft' ? 'selected' : ''}>📝 Черновик</option>
-                            <option value="published" ${currentStatus === 'published' ? 'selected' : ''}>🚀 Опубликовать</option>
+                            <option value="draft" ${currentStatus === ARTICLE_STATUS.DRAFT ? 'selected' : ''}>${ARTICLE_STATUS_TITLE.DRAFT}</option>
+                            <option value="published" ${currentStatus === ARTICLE_STATUS.PUBLISHED ? 'selected' : ''}>🚀 Опубликовать</option>
                         </select>
                     </div>
                     

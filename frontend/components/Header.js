@@ -1,5 +1,5 @@
 import { getState } from '../state.js';
-import { UPLOAD } from '../constants.js';
+import { UPLOAD, USER_ROLES } from '../constants.js';
 import { escapeHtml } from '../utils/utils.js';
 
 export default function Header() {
@@ -54,7 +54,7 @@ function renderUserSection(user) {
                     <a href="/profile" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                         👤 Профиль
                     </a>
-                    ${user.role === 'admin' ? `
+                    ${user.role === USER_ROLES.ADMIN ? `
                         <a href="/admin/articles" class="block px-4 py-2 hover:bg-gray-700 transition text-sm">
                             ⚙️ Админ панель
                         </a>

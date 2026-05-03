@@ -36,12 +36,24 @@ export const DISPLAY = {
 
 // Статусы статей
 export const ARTICLE_STATUS = {
-    DRAFT: 'Черновик',
-    PUBLISHED: 'Опубликовано',
+    DRAFT: 'draft',
+    PUBLISHED: 'published',
+};
+
+
+export const ARTICLE_STATUS_TITLE = {
+    DRAFT: '📝 Черновик',
+    PUBLISHED: '🚀 Опубликовано',
 };
 
 // Роли пользователей
 export const USER_ROLES = {
+    USER: 'user',
+    ADMIN: 'admin',
+};
+
+export const USER_ROLES_TITLE = {
     USER: 'Пользователь',
     ADMIN: '👑 Администратор',
+    SUPERADMIN: '💎 Админстратор'
 };

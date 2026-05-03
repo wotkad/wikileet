@@ -1,4 +1,4 @@
-import { PAGINATION, UPLOAD } from '../../constants.js';
+import { PAGINATION, UPLOAD, ARTICLE_STATUS, ARTICLE_STATUS_TITLE } from '../../constants.js';
 import { getArticles, deleteArticle } from '../../api.js';
 import { showConfirmDialog } from '../../components/Dialog.js';
 import { escapeHtml, formatDate, getStatusText, getStatusColor, getStatusIcon, calculateReadTime, getArticlesDeclension, getMinutesDeclension, getViewsDeclension } from '../../utils/utils.js';
@@ -40,8 +40,8 @@ export default async function ArticlesListPage() {
                 <div class="flex gap-3">
                     <select id="status-filter" class="px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>Все записи</option>
-                        <option value="published" ${currentStatusFilter === 'published' ? 'selected' : ''}>Опубликованные</option>
-                        <option value="draft" ${currentStatusFilter === 'draft' ? 'selected' : ''}>Черновики</option>
+                        <option value="published" ${currentStatusFilter === ARTICLE_STATUS.PUBLISHED ? 'selected' : ''}>Опубликованные</option>
+                        <option value="draft" ${currentStatusFilter === ARTICLE_STATUS.DRAFT ? 'selected' : ''}>Черновики</option>
                     </select>
                     <a href="/admin/articles/new" 
                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">

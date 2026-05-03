@@ -178,6 +178,58 @@ router.get('/avatar/:filename', async (req, res) => {
     }
 });
 
+router.put('/user/:userId/role', authMiddleware, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
+        
+        // Проверяем, что текущий пользователь admin
+        const currentUser = await User.findById(req.userId);
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admin can change user roles' });
+        }
+        
+        // Находим целевого пользователя
+        const targetUser = await User.findById(userId);
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Нельзя изменить свою роль
+        if (currentUser._id.toString() === userId) {
+            return res.status(403).json({ error: 'Cannot change your own role' });
+        }
+        
+        // Проверяем допустимость роли
+        if (!['user', 'admin'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+        
+        // Обновляем роль
+        targetUser.role = role;
+        await targetUser.save();
+        
+        // Возвращаем обновленного пользователя
+        const userResponse = {
+            _id: targetUser._id,
+            name: targetUser.name,
+            email: targetUser.email,
+            role: targetUser.role,
+            slug: targetUser.slug,
+            avatar: targetUser.avatar,
+            createdAt: targetUser.createdAt
+        };
+        
+        res.json({ 
+            message: `User role updated to ${role}`,
+            user: userResponse
+        });
+    } catch (error) {
+        console.error('Error changing user role:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Получение информации о пользователе
 router.get('/user/:id', async (req, res) => {
     try {

@@ -3,7 +3,7 @@ import { getUserArticles } from '../api.js';
 import { escapeHtml, formatDate } from '../utils/utils.js';
 import ArticleCard from '../components/ArticleCard.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
-import { PAGINATION } from '../constants.js';
+import { PAGINATION, USER_ROLES, USER_ROLES_TITLE } from '../constants.js';
 import { loadFavorites } from '../components/FavoriteButton.js';
 import { initAvatarUpload } from '../components/AvatarUpload.js';
 
@@ -92,7 +92,7 @@ async function renderProfilePage() {
                         <p class="text-gray-300 mt-1" id="user-email-display">${escapeHtml(user.email)}</p>
                         <div class="flex gap-4 mt-3">
                             <span class="px-3 py-1 bg-blue-800 rounded-full text-sm">
-                                ${user.role === 'admin' ? '👑 Администратор' : '📖 Пользователь'}
+                                ${user.role === USER_ROLES.ADMIN ? USER_ROLES_TITLE.ADMIN : USER_ROLES_TITLE.USER}
                             </span>
                             <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
                                 📅 Зарегистрирован: ${registeredDate}

@@ -1,4 +1,4 @@
-import { PAGINATION, SEARCH, UPLOAD, USER_ROLES } from '../constants.js';
+import { PAGINATION, SEARCH, UPLOAD, USER_ROLES, USER_ROLES_TITLE } from '../constants.js';
 import { escapeHtml, debounce, formatDate, getArticlesDeclension, getViewsDeclension, getUsersDeclension } from '../utils/utils.js';
 import { renderPagination, attachPaginationEvents } from '../components/Pagination.js';
 import { renderSearchInput, initSearchInput } from '../components/Search.js';
@@ -117,8 +117,8 @@ function renderUsersList(users) {
                                 ${escapeHtml(user.name)}
                             </a>
                             ${user.role === USER_ROLES.ADMIN ? 
-                                '<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">Администратор</span>' : 
-                                '<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">Пользователь</span>'
+                                `<span class="px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full text-xs">${USER_ROLES_TITLE.ADMIN}</span>` : 
+                                `<span class="px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full text-xs">${USER_ROLES_TITLE.USER}</span>`
                             }
                         </div>
                         <div class="text-sm text-gray-400 mt-1">${escapeHtml(user.email)}</div>
@@ -174,8 +174,8 @@ export default async function UsersPage() {
                         <label class="block text-sm font-medium mb-2">Показать по роли</label>
                         <select id="roleFilter" class="h-10 w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="all" ${currentFilters.role === 'all' ? 'selected' : ''}>Все пользователи</option>
-                            <option value="admin" ${currentFilters.role === 'admin' ? 'selected' : ''}>Администраторы</option>
-                            <option value="user" ${currentFilters.role === 'user' ? 'selected' : ''}>Пользователи</option>
+                            <option value="admin" ${currentFilters.role === USER_ROLES.ADMIN ? 'selected' : ''}>Администраторы</option>
+                            <option value="user" ${currentFilters.role === USER_ROLES.USER ? 'selected' : ''}>Пользователи</option>
                         </select>
                     </div>
                     <div>

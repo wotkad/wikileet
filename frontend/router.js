@@ -14,6 +14,7 @@ import { initSidebarEvents } from './components/Sidebar.js';
 import { initAvatarUpload } from './components/AvatarUpload.js';
 import UsersPage from './pages/users.js';
 import MediaPage from './pages/media.js';
+import { USER_ROLES } from './constants.js';
 
 const routes = {
     '/': HomePage,
@@ -204,7 +205,7 @@ const router = {
 
         // Защита чужих профилей (только админы)
         if (path.startsWith('/profile/') && path !== '/profile') {
-            if (!state.currentUser || state.currentUser.role !== 'admin') {
+            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
                 this.navigate('/login');
                 return;
             }
@@ -212,7 +213,7 @@ const router = {
 
         // Проверка для админки
         if (path.startsWith('/admin')) {
-            if (!state.currentUser || state.currentUser.role !== 'admin') {
+            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
                 this.navigate('/login');
                 return;
             }
@@ -220,7 +221,7 @@ const router = {
 
         // Проверка для страницы пользователей (только админы)
         if (path === '/users') {
-            if (!state.currentUser || state.currentUser.role !== 'admin') {
+            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
                 this.navigate('/login');
                 return;
             }
@@ -232,7 +233,7 @@ const router = {
         }
 
         if (path === '/media') {
-            if (!state.currentUser || state.currentUser.role !== 'admin') {
+            if (!state.currentUser || state.currentUser.role !== USER_ROLES.ADMIN) {
                 this.navigate('/login');
                 return;
             } else {
