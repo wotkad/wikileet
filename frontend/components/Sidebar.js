@@ -22,7 +22,7 @@ function renderSidebarContent(user) {
                     </a>
                     <a href="/wiki" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
                         <span>📚</span>
-                        <span>Записи</span>
+                        <span>Статьи</span>
                     </a>
                     ${showAdminLinks ? `
                         <a href="/users" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
@@ -60,7 +60,7 @@ export function updateSidebar() {
         </a>
         <a href="/wiki" class="block px-3 py-2 rounded hover:bg-gray-700 transition flex items-center space-x-2">
             <span>📚</span>
-            <span>Записи</span>
+            <span>Статьи</span>
         </a>
     `;
     

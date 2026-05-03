@@ -50,7 +50,7 @@ export default async function ArticleEditPage(params) {
             if (!article) {
                 return `
                     <div class="text-center py-12">
-                        <h2 class="text-2xl font-bold text-red-400">Запись не найдена</h2>
+                        <h2 class="text-2xl font-bold text-red-400">Статья не найдена</h2>
                         <a href="/admin/articles" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Вернуться в админ панель</a>
                     </div>
                 `;
@@ -68,8 +68,8 @@ export default async function ArticleEditPage(params) {
     return `
         <div class="mx-auto">
             <div class="mb-6">
-                <h1 class="text-3xl font-bold">${isEdit ? 'Редактировать запись "' + article.title + '"' : 'Создать новую запись'}</h1>
-                <p class="text-gray-400 mt-1">Заполните форму ниже чтобы ${isEdit ? 'обновить' : 'создать'} запись</p>
+                <h1 class="text-3xl font-bold">${isEdit ? 'Редактировать статья "' + article.title + '"' : 'Создать новую статья'}</h1>
+                <p class="text-gray-400 mt-1">Заполните форму ниже чтобы ${isEdit ? 'обновить' : 'создать'} статья</p>
             </div>
             
             <form id="articleForm" class="space-y-6">

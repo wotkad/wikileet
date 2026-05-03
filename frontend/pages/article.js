@@ -103,7 +103,7 @@ export default async function ArticlePage(params) {
             return `
                 <div class="text-center py-12">
                     <h2 class="text-2xl font-bold text-red-400">Статья не найдена</h2>
-                    <a href="/wiki" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Назад к записям</a>
+                    <a href="/wiki" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Назад к статьям</a>
                 </div>
             `;
         }
@@ -138,7 +138,7 @@ export default async function ArticlePage(params) {
                 
                 <div class="flex justify-between items-center mb-4">
                     <a href="/wiki" class="inline-block text-blue-400 hover:text-blue-300 transition">
-                        ← Назад к записям
+                        ← Назад к статьям
                     </a>
                     <div class="flex gap-2">
                         <button id="copyArticleBtn" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm flex items-center gap-2" data-url="${articleUrl}" data-title="${escapeHtml(article.title)}">
@@ -182,7 +182,7 @@ export default async function ArticlePage(params) {
                 
                 ${similarArticles.length > 0 ? `
                     <div class="mt-8 bg-gray-800 rounded-lg p-6">
-                        <h3 class="text-xl font-bold mb-4">Похожие записи</h3>
+                        <h3 class="text-xl font-bold mb-4">Похожие статьи</h3>
                         <div class="space-y-4">
                             ${similarArticles.map(art => ArticleCard(art)).join('')}
                         </div>
@@ -203,7 +203,7 @@ export default async function ArticlePage(params) {
         return `
             <div class="text-center py-12">
                 <h2 class="text-2xl font-bold text-red-400">Ошибка загрузки статьи</h2>
-                <a href="/wiki" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Назад к записям</a>
+                <a href="/wiki" class="mt-4 inline-block px-4 py-2 bg-blue-600 rounded-lg">Назад к статьям</a>
             </div>
         `;
     }

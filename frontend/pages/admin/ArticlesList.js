@@ -34,18 +34,18 @@ export default async function ArticlesListPage() {
         <div class="mx-auto">
             <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold">Редактировать записи</h1>
+                    <h1 class="text-3xl font-bold">Редактировать статьи</h1>
                     <p class="text-gray-400 mt-1">${getArticlesDeclension(currentData.total)}</p>
                 </div>
                 <div class="flex gap-3">
                     <select id="status-filter" class="px-4 py-2 bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>Все записи</option>
+                        <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>Все статьи</option>
                         <option value="published" ${currentStatusFilter === ARTICLE_STATUS.PUBLISHED ? 'selected' : ''}>Опубликованные</option>
                         <option value="draft" ${currentStatusFilter === ARTICLE_STATUS.DRAFT ? 'selected' : ''}>Черновики</option>
                     </select>
                     <a href="/admin/articles/new" 
                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition">
-                        + Создать запись
+                        + Создать статья
                     </a>
                 </div>
             </div>
@@ -61,7 +61,7 @@ export default async function ArticlesListPage() {
 
 function renderArticlesList(articles) {
     if (!articles || articles.length === 0) {
-        return '<div class="text-gray-400 text-center py-8">Нет записей</div>';
+        return '<div class="text-gray-400 text-center py-8">Нет статей</div>';
     }
 
     return articles.map(article => {

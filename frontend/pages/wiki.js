@@ -35,7 +35,7 @@ async function updateWikiContent() {
     if (articlesList) {
         articlesList.innerHTML = data.articles && data.articles.length > 0 ? 
             data.articles.map(article => ArticleCard(article)).join('') : 
-            '<div class="text-gray-400 text-center py-8">Записей не найдено</div>';
+            '<div class="text-gray-400 text-center py-8">Статей не найдено</div>';
     }
     
     const paginationContainer = document.querySelector('.pagination-container');
@@ -97,7 +97,7 @@ async function refreshWikiPage() {
     if (articlesList) {
         articlesList.innerHTML = data.articles && data.articles.length > 0 ? 
             data.articles.map(article => ArticleCard(article)).join('') : 
-            '<div class="text-gray-400 text-center py-8">Записей не найдено</div>';
+            '<div class="text-gray-400 text-center py-8">Статей не найдено</div>';
     }
     
     const paginationContainer = document.querySelector('.pagination-container');
@@ -187,7 +187,7 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
             <div class="bg-gray-800 rounded-lg p-4">
                 <h3 class="text-sm font-semibold mb-2 text-gray-300">Фильтр по медиа:</h3>
                 <select id="mediaSelect" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="" ${hasMediaValue === '' ? 'selected' : ''}>Все записи</option>
+                    <option value="" ${hasMediaValue === '' ? 'selected' : ''}>Все статьи</option>
                     <option value="image" ${hasMediaValue === 'image' ? 'selected' : ''}>📷 Только с изображениями</option>
                     <option value="video" ${hasMediaValue === 'video' ? 'selected' : ''}>🎬 Только с видео</option>
                 </select>
@@ -475,7 +475,7 @@ export default async function WikiPage() {
     return `
         <div class="mx-auto">
             <div class="mb-6">
-                <h1 class="text-3xl font-bold mb-2">Все записи</h1>
+                <h1 class="text-3xl font-bold mb-2">Все статьи</h1>
                 <div class="filters-container">
                     ${renderFiltersBlock(
                         tags, 
@@ -506,7 +506,7 @@ export default async function WikiPage() {
             <div class="grid grid-cols-1 gap-4" id="articles-list">
                 ${data.articles && data.articles.length > 0 ? 
                     data.articles.map(article => ArticleCard(article)).join('') : 
-                    '<div class="text-gray-400 text-center py-8">Записей не найдено</div>'}
+                    '<div class="text-gray-400 text-center py-8">Статей не найдено</div>'}
             </div>
             
             <div class="pagination-container">

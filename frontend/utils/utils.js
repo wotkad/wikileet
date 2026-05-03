@@ -108,9 +108,9 @@ export function getMinutesDeclension(minutes) {
     return `${minutes} ${declension(minutes, ['минута', 'минуты', 'минут'])}`;
 }
 
-// Склонение для записей
+// Склонение для статей
 export function getArticlesDeclension(count) {
-    return `${count} ${declension(count, ['запись', 'записи', 'записей'])}`;
+    return `${count} ${declension(count, ['статья', 'статьи', 'статей'])}`;
 }
 
 // Склонение для просмотров

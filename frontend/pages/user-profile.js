@@ -168,11 +168,11 @@ function renderUserProfilePage(user, allArticles) {
             </div>
             
             <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-2xl font-bold mb-4">📝 Записи ${escapeHtml(user.name)}</h2>
+                <h2 class="text-2xl font-bold mb-4">📝 Статьи ${escapeHtml(user.name)}</h2>
                 <div class="space-y-4">
                     ${paginatedArticles.length > 0 ? 
                         paginatedArticles.map(article => ArticleCard(article)).join('') : 
-                        '<div class="text-center py-8 text-gray-400">Записей ещё нет</div>'
+                        '<div class="text-center py-8 text-gray-400">Статей ещё нет</div>'
                     }
                 </div>
                 ${renderPagination(currentPage, totalPages)}

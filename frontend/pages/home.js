@@ -43,7 +43,7 @@ export default async function HomePage() {
                 </p>
                 <div class="flex gap-4 justify-center">
                     <a href="/wiki" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition inline-block">
-                        Все записи →
+                        Все статьи →
                     </a>
                 </div>
             </div>
@@ -64,21 +64,21 @@ export default async function HomePage() {
 
             <div class="grid md:grid-cols-2 gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold mb-4">🆕 Последние записи</h2>
+                    <h2 class="text-2xl font-bold mb-4">🆕 Последние статьи</h2>
                     <div class="space-y-4">
                         ${recentArticles.length > 0 ? 
                             recentArticles.map(article => ArticleCard(article)).join('') : 
-                            '<div class="text-gray-400 text-center py-8">Нет записей</div>'
+                            '<div class="text-gray-400 text-center py-8">Нет статей</div>'
                         }
                     </div>
                 </div>
 
                 <div>
-                    <h2 class="text-2xl font-bold mb-4">🔥 Популярные записи</h2>
+                    <h2 class="text-2xl font-bold mb-4">🔥 Популярные статьи</h2>
                     <div class="space-y-4">
                         ${popularArticles.length > 0 ? 
                             popularArticles.map(article => ArticleCard(article)).join('') : 
-                            '<div class="text-gray-400 text-center py-8">Нет записей</div>'
+                            '<div class="text-gray-400 text-center py-8">Нет статей</div>'
                         }
                     </div>
                 </div>
