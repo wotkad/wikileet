@@ -1,9 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken'); // Добавляем импорт jwt
+const jwt = require('jsonwebtoken');
 const Article = require('../models/Article');
 const Category = require('../models/Category');
 const Tag = require('../models/Tag');
+const Media = require('../models/Media');
 const { updateMediaUsage } = require('../middleware/mediaUsage');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
@@ -11,6 +12,40 @@ const router = express.Router();
 
 // Временное хранилище просмотров
 const viewedArticles = new Map();
+
+// Функция для проверки наличия медиа в контенте
+function hasMediaInContent(content) {
+    if (!content) return { hasImage: false, hasVideo: false };
+    
+    const imagePatterns = [
+        /<img[^>]+src=["'][^"']+["']/gi,
+        /\/api\/media\/file\/[^"'\s)]+\.(jpg|jpeg|png|gif|webp|svg)/gi
+    ];
+    
+    const videoPatterns = [
+        /<video[^>]*>[\s\S]*?<\/video>/gi,
+        /\/api\/media\/file\/[^"'\s)]+\.(mp4|webm|mov|ogg)/gi
+    ];
+    
+    let hasImage = false;
+    let hasVideo = false;
+    
+    for (const pattern of imagePatterns) {
+        if (pattern.test(content)) {
+            hasImage = true;
+            break;
+        }
+    }
+    
+    for (const pattern of videoPatterns) {
+        if (pattern.test(content)) {
+            hasVideo = true;
+            break;
+        }
+    }
+    
+    return { hasImage, hasVideo };
+}
 
 // GET /api/articles - получение статей с фильтрацией
 router.get('/', async (req, res) => {
@@ -26,32 +61,13 @@ router.get('/', async (req, res) => {
             limit = 10,
             status,
             author,
+            hasMedia  // '', 'image', 'video'
         } = req.query;
 
         const query = {};
 
-        // Определяем, админ ли пользователь
-        const token = req.cookies.token;
-        let isAdmin = false;
-        
-        if (token) {
-            try {
-                const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                isAdmin = decoded.role === 'admin';
-                console.log('User is admin:', isAdmin);
-            } catch (error) {
-                console.log('Invalid token:', error.message);
-            }
-        }
-
-        // Фильтр по статусу
-        if (status && status !== 'all') {
-            query.status = status;
-        } else if (!status || status === 'all') {
-            if (!isAdmin) {
-                query.status = 'published';
-            }
-        }
+        // Всегда показываем только опубликованные статьи
+        query.status = 'published';
 
         // Фильтр по автору
         if (author) {
@@ -94,23 +110,67 @@ router.get('/', async (req, res) => {
         }
 
         console.log('MongoDB query:', JSON.stringify(query, null, 2));
+        console.log('hasMedia filter:', hasMedia);
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        
-        const articles = await Article.find(query)
+        // Получаем все статьи без пагинации для фильтрации по медиа
+        let allArticles = await Article.find(query)
             .populate('category')
             .populate('tags')
             .populate('author', 'name email avatar')
-            .sort(sort)
-            .limit(parseInt(limit))
-            .skip(skip);
+            .lean();
 
-        const total = await Article.countDocuments(query);
+        console.log(`Found ${allArticles.length} articles before media filter`);
+
+        // Добавляем информацию о медиа и фильтруем
+        let filteredArticles = allArticles.map(article => {
+            const { hasImage, hasVideo } = hasMediaInContent(article.content);
+            return {
+                ...article,
+                hasImage,
+                hasVideo
+            };
+        });
+
+        // Применяем фильтр по медиа
+        if (hasMedia === 'image') {
+            filteredArticles = filteredArticles.filter(article => article.hasImage === true);
+            console.log(`After image filter: ${filteredArticles.length} articles`);
+        } else if (hasMedia === 'video') {
+            filteredArticles = filteredArticles.filter(article => article.hasVideo === true);
+            console.log(`After video filter: ${filteredArticles.length} articles`);
+        }
+
+        // Применяем сортировку
+        if (sort === 'title') {
+            filteredArticles.sort((a, b) => a.title.localeCompare(b.title));
+        } else if (sort === '-title') {
+            filteredArticles.sort((a, b) => b.title.localeCompare(a.title));
+        } else if (sort === 'createdAt') {
+            filteredArticles.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        } else if (sort === '-createdAt') {
+            filteredArticles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        } else if (sort === '-views') {
+            filteredArticles.sort((a, b) => b.views - a.views);
+        } else if (sort === 'readTime') {
+            filteredArticles.sort((a, b) => a.readTime - b.readTime);
+        } else if (sort === '-readTime') {
+            filteredArticles.sort((a, b) => b.readTime - a.readTime);
+        }
+
+        // Пагинация
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const startIndex = (pageNum - 1) * limitNum;
+        const endIndex = startIndex + limitNum;
+        
+        const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
+        const total = filteredArticles.length;
+        const totalPages = Math.ceil(total / limitNum);
 
         res.json({
-            articles,
-            totalPages: Math.ceil(total / parseInt(limit)),
-            currentPage: parseInt(page),
+            articles: paginatedArticles,
+            totalPages,
+            currentPage: pageNum,
             total,
         });
     } catch (error) {
@@ -127,6 +187,7 @@ router.get('/search', async (req, res) => {
             return res.json([]);
         }
         
+        // Всегда ищем только в опубликованных статьях
         const articles = await Article.find({
             $or: [
                 { title: { $regex: q, $options: 'i' } },
@@ -134,11 +195,21 @@ router.get('/search', async (req, res) => {
             ],
             status: 'published'
         })
-            .select('title slug description')
+            .select('title slug description content')
             .limit(parseInt(limit))
             .lean();
         
-        res.json(articles);
+        // Добавляем информацию о медиа
+        const articlesWithMedia = articles.map(article => {
+            const { hasImage, hasVideo } = hasMediaInContent(article.content);
+            return {
+                ...article,
+                hasImage,
+                hasVideo
+            };
+        });
+        
+        res.json(articlesWithMedia);
     } catch (error) {
         console.error('Error searching articles:', error);
         res.status(500).json({ error: error.message });
@@ -166,17 +237,7 @@ router.get('/:slug', async (req, res) => {
         const userAgent = req.headers['user-agent'];
         const sessionKey = `${clientIp}_${userAgent}_${slug}`;
         
-        const token = req.cookies.token;
-        let isAdmin = false;
-        
-        if (token) {
-            try {
-                const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                isAdmin = decoded.role === 'admin';
-            } catch (error) {}
-        }
-        
-        const article = await Article.findOne({ slug })
+        const article = await Article.findOne({ slug, status: 'published' })
             .populate('category')
             .populate('tags')
             .populate('author', 'name email avatar');
@@ -185,22 +246,17 @@ router.get('/:slug', async (req, res) => {
             return res.status(404).json({ error: 'Article not found' });
         }
 
-        if (article.status === 'draft' && !isAdmin) {
-            return res.status(404).json({ error: 'Article not found' });
+        // Увеличиваем счетчик просмотров
+        const lastViewTime = viewedArticles.get(sessionKey);
+        const now = Date.now();
+        
+        if (!lastViewTime || (now - lastViewTime) > 24 * 60 * 60 * 1000) {
+            article.views += 1;
+            await article.save();
+            viewedArticles.set(sessionKey, now);
         }
 
-        if (article.status === 'published') {
-            const lastViewTime = viewedArticles.get(sessionKey);
-            const now = Date.now();
-            
-            if (!lastViewTime || (now - lastViewTime) > 24 * 60 * 60 * 1000) {
-                article.views += 1;
-                await article.save();
-                viewedArticles.set(sessionKey, now);
-            }
-        }
-
-        // Похожие статьи с полным populate автора
+        // Похожие статьи (только опубликованные)
         const similar = await Article.find({
             $or: [
                 { category: article.category._id },
@@ -212,7 +268,7 @@ router.get('/:slug', async (req, res) => {
             .limit(5)
             .populate('category')
             .populate('tags')
-            .populate('author', 'name email avatar'); // Добавляем populate для автора
+            .populate('author', 'name email avatar');
 
         res.json({ article, similar });
     } catch (error) {
@@ -226,8 +282,6 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { title, slug, content, description, category, tags, status, publishedAt, author } = req.body;
         
-        console.log('Creating article with data:', { title, slug, status, publishedAt, author });
-        
         if (!title || !slug || !content || !description || !category) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
@@ -237,12 +291,10 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Article with this slug already exists' });
         }
         
-        // Рассчитываем время чтения
         const text = content.replace(/<[^>]*>/g, '');
         const words = text.trim().split(/\s+/).length;
         const readTime = Math.max(1, Math.ceil(words / 200));
         
-        // Определяем автора
         let authorId = author || req.userId;
         
         const articleData = {
@@ -256,7 +308,6 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             readTime,
         };
         
-        // Обработка статуса и даты публикации
         if (status === 'published') {
             articleData.status = 'published';
             articleData.publishedAt = publishedAt ? new Date(publishedAt) : new Date();
@@ -267,14 +318,11 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
         const article = new Article(articleData);
         await article.save();
         
-        // ОБНОВЛЯЕМ ИСПОЛЬЗОВАНИЕ МЕДИАФАЙЛОВ
         await updateMediaUsage(article._id.toString(), content);
         
         await article.populate('category');
         await article.populate('tags');
         await article.populate('author', 'name email');
-        
-        console.log('Article created successfully:', article._id);
         
         res.status(201).json(article);
     } catch (error) {
@@ -289,9 +337,6 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params;
         const { title, slug, content, description, category, tags, status, publishedAt, author } = req.body;
         
-        console.log('Updating article with ID:', id, 'Data:', { title, slug, status, publishedAt, author });
-        
-        // Рассчитываем время чтения
         const text = content.replace(/<[^>]*>/g, '');
         const words = text.trim().split(/\s+/).length;
         const readTime = Math.max(1, Math.ceil(words / 200));
@@ -308,13 +353,11 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
             updatedAt: Date.now()
         };
         
-        // Обработка статуса и даты публикации
         if (status === 'published') {
             updateData.status = 'published';
             if (publishedAt) {
                 updateData.publishedAt = new Date(publishedAt);
             } else {
-                // Если дата не указана, оставляем существующую или устанавливаем текущую
                 const existingArticle = await Article.findById(id);
                 updateData.publishedAt = existingArticle?.publishedAt || new Date();
             }
@@ -332,79 +375,11 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Article not found' });
         }
         
-        // ОБНОВЛЯЕМ ИСПОЛЬЗОВАНИЕ МЕДИАФАЙЛОВ
         await updateMediaUsage(article._id.toString(), content);
         
         await article.populate('category');
         await article.populate('tags');
         await article.populate('author', 'name email');
-        
-        console.log('Article updated successfully:', article._id);
-        
-        res.json(article);
-    } catch (error) {
-        console.error('Error in PUT /articles/:id:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// PUT /api/articles/:id - обновление статьи (admin only)
-router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { title, slug, content, description, category, tags, status, scheduledPublishDate, author } = req.body;
-        
-        console.log('Updating article with ID:', id, 'Data:', { title, slug, status, scheduledPublishDate, author });
-        
-        // Рассчитываем время чтения
-        const text = content.replace(/<[^>]*>/g, '');
-        const words = text.trim().split(/\s+/).length;
-        const readTime = Math.max(1, Math.ceil(words / 200));
-        
-        const updateData = {
-            title,
-            slug,
-            content,
-            description,
-            category,
-            tags: tags || [],
-            author: author || req.userId,
-            readTime,
-            updatedAt: Date.now()
-        };
-        
-        // Обработка статуса и даты публикации
-        if (status === 'scheduled' && scheduledPublishDate) {
-            updateData.status = 'scheduled';
-            updateData.scheduledPublishDate = new Date(scheduledPublishDate);
-            // Не меняем publishedAt
-        } else if (status === 'published') {
-            updateData.status = 'published';
-            // Если статья была не опубликована, устанавливаем дату публикации
-            const existingArticle = await Article.findById(id);
-            if (existingArticle && existingArticle.status !== 'published') {
-                updateData.publishedAt = Date.now();
-            }
-        } else {
-            updateData.status = 'draft';
-            updateData.scheduledPublishDate = null;
-        }
-        
-        const article = await Article.findByIdAndUpdate(
-            id,
-            updateData,
-            { new: true, runValidators: true }
-        );
-        
-        if (!article) {
-            return res.status(404).json({ error: 'Article not found' });
-        }
-        
-        await article.populate('category');
-        await article.populate('tags');
-        await article.populate('author', 'name email');
-        
-        console.log('Article updated successfully:', article._id);
         
         res.json(article);
     } catch (error) {
@@ -418,9 +393,6 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         
-        console.log('Deleting article with ID:', id);
-        
-        // Удаляем статью из usedInArticles всех медиафайлов
         await Media.updateMany(
             { usedInArticles: id },
             { $pull: { usedInArticles: id } }
@@ -431,8 +403,6 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         if (!article) {
             return res.status(404).json({ error: 'Article not found' });
         }
-        
-        console.log('Article deleted successfully:', article.title);
         
         res.json({ 
             message: 'Article deleted successfully',

@@ -14,12 +14,12 @@ let currentFilters = {
     limit: PAGINATION.WIKI_LIMIT,
     dateFrom: '',
     dateTo: '',
-    author: ''
+    author: '',
+    hasMedia: ''  // '', 'image', 'video'
 };
 
 let selectedTagSlugs = new Set();
 
-// Функция для обновления только контента (статьи, пагинация, счетчик)
 async function updateWikiContent() {
     const [data, tags] = await Promise.all([
         getArticles(currentFilters),
@@ -50,7 +50,6 @@ async function updateWikiContent() {
     }
 }
 
-// Функция для полного обновления страницы (сохраняет состояние)
 async function refreshWikiPage() {
     const [data, categories, tags, users] = await Promise.all([
         getArticles(currentFilters),
@@ -71,10 +70,22 @@ async function refreshWikiPage() {
     const selectedAuthor = users.find(u => u._id === currentFilters.author);
     const selectedAuthorName = selectedAuthor ? selectedAuthor.name : '';
     const hasDateFilter = currentFilters.dateFrom || currentFilters.dateTo;
+    const hasMediaFilter = currentFilters.hasMedia !== '';
     
     const filtersContainer = document.querySelector('.filters-container');
     if (filtersContainer) {
-        filtersContainer.innerHTML = renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter, users);
+        filtersContainer.innerHTML = renderFiltersBlock(
+            tags, 
+            selectedCategoryName, 
+            currentFilters.tagSlugs, 
+            tagMap, 
+            selectedAuthorName, 
+            currentFilters.dateFrom, 
+            currentFilters.dateTo, 
+            hasDateFilter, 
+            users,
+            currentFilters.hasMedia
+        );
     }
     
     const countElement = document.querySelector('.articles-count');
@@ -103,7 +114,7 @@ async function refreshWikiPage() {
     attachFilterEvents(tags, users);
 }
 
-function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, authorName, dateFrom, dateTo, hasDateFilter, users) {
+function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, authorName, dateFrom, dateTo, hasDateFilter, users, hasMediaValue) {
     return `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div class="bg-gray-800 rounded-lg p-4">
@@ -135,7 +146,7 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
             </div>
         </div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             <div class="bg-gray-800 rounded-lg p-4">
                 <h3 class="text-sm font-semibold mb-2 text-gray-300">Фильтр по дате:</h3>
                 <div class="grid grid-cols-2 gap-2">
@@ -167,14 +178,24 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
                     <option value="">Все авторы</option>
                     ${users && users.length > 0 ? users.map(user => `
                         <option value="${user._id}" ${currentFilters.author === user._id ? 'selected' : ''}>
-                            ${escapeHtml(user.name)} (${getArticlesDeclension(user.articlesCount)})
+                            ${escapeHtml(user.name)}
                         </option>
                     `).join('') : '<option value="">Нет пользователей</option>'}
                 </select>
             </div>
+            
+            <div class="bg-gray-800 rounded-lg p-4">
+                <h3 class="text-sm font-semibold mb-2 text-gray-300">Фильтр по медиа:</h3>
+                <select id="mediaSelect" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="" ${hasMediaValue === '' ? 'selected' : ''}>Все записи</option>
+                    <option value="image" ${hasMediaValue === 'image' ? 'selected' : ''}>📷 Только с изображениями</option>
+                    <option value="video" ${hasMediaValue === 'video' ? 'selected' : ''}>🎬 Только с видео</option>
+                </select>
+            </div>
+
         </div>
         
-        ${(currentFilters.categorySlug || currentFilters.tagSlugs.length > 0 || currentFilters.dateFrom || currentFilters.dateTo || currentFilters.author) ? `
+        ${(currentFilters.categorySlug || currentFilters.tagSlugs.length > 0 || currentFilters.dateFrom || currentFilters.dateTo || currentFilters.author || currentFilters.hasMedia) ? `
             <div class="mb-4">
                 <button id="clearFiltersBtn" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition">
                     ✕ Очистить все фильтры
@@ -183,7 +204,7 @@ function renderFiltersBlock(tags, categoryName, selectedTagSlugsList, tagMap, au
         ` : ''}
         
         <div class="flex flex-wrap gap-2 mt-2 mb-2" id="filters-info">
-            ${renderFiltersInfo(categoryName, currentFilters.tagSlugs, tagMap, authorName, dateFrom, dateTo)}
+            ${renderFiltersInfo(categoryName, currentFilters.tagSlugs, tagMap, authorName, dateFrom, dateTo, currentFilters.hasMedia)}
         </div>
     `;
 }
@@ -267,6 +288,22 @@ function onAuthorFilterChange(authorId) {
     refreshWikiPage();
 }
 
+function onMediaFilterChange(mediaValue) {
+    currentFilters.hasMedia = mediaValue;
+    currentFilters.page = 1;
+    
+    const url = new URL(window.location.href);
+    if (mediaValue) {
+        url.searchParams.set('hasMedia', mediaValue);
+    } else {
+        url.searchParams.delete('hasMedia');
+    }
+    url.searchParams.delete('page');
+    window.history.pushState({}, '', url);
+    
+    refreshWikiPage();
+}
+
 function applyTagFilters() {
     const params = new URLSearchParams(window.location.search);
     const tagsArray = Array.from(selectedTagSlugs);
@@ -325,6 +362,16 @@ function attachFilterEvents(tags, users) {
         authorSelect.parentNode.replaceChild(newAuthorSelect, authorSelect);
         newAuthorSelect.addEventListener('change', (e) => {
             onAuthorFilterChange(e.target.value);
+        });
+    }
+    
+    // Медиа фильтр - выпадающий список
+    const mediaSelect = document.getElementById('mediaSelect');
+    if (mediaSelect) {
+        const newMediaSelect = mediaSelect.cloneNode(true);
+        mediaSelect.parentNode.replaceChild(newMediaSelect, mediaSelect);
+        newMediaSelect.addEventListener('change', (e) => {
+            onMediaFilterChange(e.target.value);
         });
     }
     
@@ -399,7 +446,8 @@ export default async function WikiPage() {
         limit: PAGINATION.WIKI_LIMIT,
         dateFrom: urlParams.get('dateFrom') || '',
         dateTo: urlParams.get('dateTo') || '',
-        author: urlParams.get('author') || ''
+        author: urlParams.get('author') || '',
+        hasMedia: urlParams.get('hasMedia') || ''
     };
     
     const [data, categories, tags, usersResponse] = await Promise.all([
@@ -409,7 +457,6 @@ export default async function WikiPage() {
         getUsers()
     ]);
     
-    // Убеждаемся что users это массив
     const users = Array.isArray(usersResponse) ? usersResponse : [];
     
     const categoryMap = new Map(categories.map(c => [c.slug, c]));
@@ -430,7 +477,18 @@ export default async function WikiPage() {
             <div class="mb-6">
                 <h1 class="text-3xl font-bold mb-2">Все записи</h1>
                 <div class="filters-container">
-                    ${renderFiltersBlock(tags, selectedCategoryName, currentFilters.tagSlugs, tagMap, selectedAuthorName, currentFilters.dateFrom, currentFilters.dateTo, hasDateFilter, users)}
+                    ${renderFiltersBlock(
+                        tags, 
+                        selectedCategoryName, 
+                        currentFilters.tagSlugs, 
+                        tagMap, 
+                        selectedAuthorName, 
+                        currentFilters.dateFrom, 
+                        currentFilters.dateTo, 
+                        hasDateFilter, 
+                        users,
+                        currentFilters.hasMedia
+                    )}
                 </div>
                 <p class="text-gray-400 mt-2 articles-count">${getArticlesDeclension(data.total)}</p>
             </div>
@@ -456,7 +514,7 @@ export default async function WikiPage() {
     `;
 }
 
-function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, dateFrom, dateTo) {
+function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, dateFrom, dateTo, hasMediaValue) {
     const filters = [];
     
     if (categoryName) {
@@ -484,6 +542,14 @@ function renderFiltersInfo(categoryName, selectedTagSlugs, tagMap, authorName, d
             dateText = `по ${dateTo}`;
         }
         filters.push(`<span class="px-2 py-1 bg-yellow-900 text-yellow-300 rounded">📅 ${dateText}</span>`);
+    }
+    
+    if (hasMediaValue === 'image') {
+        filters.push(`<span class="px-2 py-1 bg-indigo-900 text-indigo-300 rounded">📷 Только с изображениями</span>`);
+    }
+    
+    if (hasMediaValue === 'video') {
+        filters.push(`<span class="px-2 py-1 bg-pink-900 text-pink-300 rounded">🎬 Только с видео</span>`);
     }
     
     if (filters.length === 0) return '';

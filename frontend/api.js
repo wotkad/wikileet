@@ -12,12 +12,11 @@ async function request(endpoint, options = {}) {
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers,
-            credentials: 'include', // Важно для отправки/получения cookie
+            credentials: 'include',
         });
 
         console.log(`Response status for ${endpoint}:`, response.status);
 
-        // Для 401 не выбрасываем ошибку, а возвращаем null
         if (response.status === 401) {
             console.log('Unauthorized request');
             return null;
@@ -63,7 +62,6 @@ export async function login(email, password) {
     
     console.log('API login response:', data);
     
-    // Просто возвращаем данные, токен уже в cookie
     return data;
 }
 
@@ -113,6 +111,10 @@ export async function getArticles(params = {}) {
     }
     if (params.dateTo) {
         queryParams.append('dateTo', params.dateTo);
+    }
+    // ДОБАВЛЯЕМ ФИЛЬТР ПО МЕДИА
+    if (params.hasMedia && params.hasMedia !== '') {
+        queryParams.append('hasMedia', params.hasMedia);
     }
     
     const queryString = queryParams.toString();

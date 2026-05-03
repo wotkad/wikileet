@@ -1,10 +1,8 @@
-// ArticleCard.js
 import { escapeHtml, calculateReadTime, truncateText, formatDate, getMinutesDeclension, getViewsDeclension } from '../utils/utils.js';
 import { DISPLAY, UPLOAD } from '../constants.js';
 import { getState } from '../state.js';
 import FavoriteButton from './FavoriteButton.js';
 
-// Функция для копирования ссылки в буфер обмена
 async function copyToClipboard(text, message) {
     try {
         await navigator.clipboard.writeText(text);
@@ -15,18 +13,15 @@ async function copyToClipboard(text, message) {
     }
 }
 
-// Функция для проверки наличия медиафайлов в контенте
 function hasMediaInContent(content) {
     if (!content) return { hasImage: false, hasVideo: false };
     
-    // Проверка на изображения
     const imagePatterns = [
         /<img[^>]+src=["'][^"']+["']/gi,
         /\.(jpg|jpeg|png|gif|webp|svg)/gi,
         /\/api\/media\/file\/[^"'\s)]+\.(jpg|jpeg|png|gif|webp|svg)/gi
     ];
     
-    // Проверка на видео
     const videoPatterns = [
         /<video[^>]*>[\s\S]*?<\/video>/gi,
         /<source[^>]+src=["'][^"']+\.(mp4|webm|mov|ogg)[^"']*["']/gi,
@@ -37,7 +32,6 @@ function hasMediaInContent(content) {
     let hasImage = false;
     let hasVideo = false;
     
-    // Проверяем изображения
     for (const pattern of imagePatterns) {
         if (pattern.test(content)) {
             hasImage = true;
@@ -45,7 +39,6 @@ function hasMediaInContent(content) {
         }
     }
     
-    // Проверяем видео
     for (const pattern of videoPatterns) {
         if (pattern.test(content)) {
             hasVideo = true;
@@ -56,7 +49,6 @@ function hasMediaInContent(content) {
     return { hasImage, hasVideo };
 }
 
-// Функция для получения иконки медиа
 function getMediaIcon(hasImage, hasVideo) {
     if (hasImage && hasVideo) {
         return {
@@ -88,7 +80,6 @@ export default function ArticleCard(article) {
     const authorSlug = author.slug;
     
     const hasValidAuthor = authorSlug && authorName !== 'Нет автора';
-    // Показываем только первые N тегов
     const visibleTags = article.tags?.slice(0, DISPLAY.MAX_TAGS_IN_CARD) || [];
     
     const state = getState();
@@ -98,7 +89,6 @@ export default function ArticleCard(article) {
     const readTimeText = getMinutesDeclension(readTime);
     const viewsText = getViewsDeclension(article.views);
     
-    // Проверяем наличие медиа в контенте
     const { hasImage, hasVideo } = hasMediaInContent(article.content);
     const mediaIcon = getMediaIcon(hasImage, hasVideo);
     
@@ -133,7 +123,6 @@ export default function ArticleCard(article) {
                     </span>
                 ` : ''}
                 
-                <!-- Иконка медиа, если есть -->
                 ${mediaIcon ? `
                     <span class="px-2 py-1 ${mediaIcon.class} rounded flex items-center gap-1" title="${mediaIcon.title}">
                         <span>${mediaIcon.icon}</span>
@@ -159,7 +148,6 @@ export default function ArticleCard(article) {
     `;
 }
 
-// Глобальный обработчик для кнопок "Копировать ссылку"
 document.addEventListener('click', async (e) => {
     const copyBtn = e.target.closest('.copy-btn');
     if (!copyBtn) return;
