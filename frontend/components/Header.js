@@ -2,6 +2,7 @@ import { getState } from '../state.js';
 import { UPLOAD, USER_ROLES } from '../constants.js';
 import { escapeHtml } from '../utils/utils.js';
 import { renderSearchInput, initSearchInput } from './Search.js';
+import { renderHotkeysInfo, initHotkeysInfo, updateHotkeysTooltip } from './HotkeysInfo.js';
 
 // Функция для проверки доступа к админ-панели (admin или superadmin)
 function hasAdminAccess(user) {
@@ -14,7 +15,7 @@ export default function Header() {
     return `
         <header class="bg-gray-800 border-b border-gray-700 fixed top-0 left-0 right-0 z-50">
             <div class="h-16 px-6 flex items-center justify-between">
-                <div class="flex items-center">
+                <div class="flex items-center gap-3">
                     <button id="sidebarToggle" class="lg:hidden text-gray-300 hover:text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -24,7 +25,7 @@ export default function Header() {
                         📚 База знаний
                     </a>
                 </div>
-                <div class="flex-1 max-w-md mx-4">
+                <div class="flex-1 max-w-md mx-4 relative">
                     ${renderSearchInput({
                         id: 'header-search-input',
                         suggestionsId: 'header-search-suggestions',
@@ -32,8 +33,11 @@ export default function Header() {
                         className: 'w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                     })}
                 </div>
-                <div class="flex items-center gap-x-2" id="header-user-section">
-                    ${renderUserSection(state.currentUser)}
+                <div class="flex items-center gap-x-3">
+                    ${renderHotkeysInfo()}
+                    <div class="flex items-center gap-x-2" id="header-user-section">
+                        ${renderUserSection(state.currentUser)}
+                    </div>
                 </div>
             </div>
         </header>
@@ -101,6 +105,31 @@ export function initHeaderSearch() {
     });
 }
 
+// Функция для фокуса на поиск (для горячей клавиши)
+export function focusSearch() {
+    const searchInput = document.getElementById('header-search-input');
+    if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+    }
+}
+
+// Инициализация подсказки горячих клавиш
+export function initHeaderHotkeysInfo() {
+    const state = getState();
+    const path = window.location.pathname;
+    const isOnArticlePage = path.startsWith('/wiki/') && path !== '/wiki';
+    initHotkeysInfo(state.currentUser, isOnArticlePage);
+}
+
+// Обновление подсказки горячих клавиш
+export function updateHeaderHotkeysTooltip() {
+    const state = getState();
+    const path = window.location.pathname;
+    const isOnArticlePage = path.startsWith('/wiki/') && path !== '/wiki';
+    updateHotkeysTooltip(state.currentUser, isOnArticlePage);
+}
+
 // Функция updateHeaderUser в Header.js
 export function updateHeaderUser() {
     console.log('updateHeaderUser called');
@@ -123,8 +152,17 @@ export function updateHeaderUser() {
             };
         }
     }
+    
+    // Обновляем подсказку горячих клавиш после смены пользователя
+    setTimeout(() => {
+        updateHeaderHotkeysTooltip();
+    }, 100);
 }
 
+// Инициализируем подсказку при загрузке
 if (typeof window !== 'undefined') {
     window.initHeaderSearch = initHeaderSearch;
+    window.initHeaderHotkeysInfo = initHeaderHotkeysInfo;
+    window.focusSearch = focusSearch;
+    window.updateHeaderHotkeysTooltip = updateHeaderHotkeysTooltip;
 }

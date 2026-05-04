@@ -16,6 +16,8 @@ import { initAvatarUpload } from './components/AvatarUpload.js';
 import UsersPage from './pages/users.js';
 import MediaPage from './pages/media.js';
 import { USER_ROLES, hasAdminAccess } from './constants.js';
+import { initHotkeys, getAvailableHotkeys } from './utils/hotkeys.js';
+import { focusSearch } from './components/Header.js';
 
 const routes = {
     '/': HomePage,
@@ -257,6 +259,48 @@ const router = {
         
         updateHeaderUser();
         initSidebarEvents();
+
+        // Инициализация горячих клавиш
+        const isOnArticlePage = path.startsWith('/wiki/') && path !== '/wiki';
+
+        // Удаляем старый обработчик, если есть
+        if (window.hotkeysCleanup) {
+            window.hotkeysCleanup();
+        }
+
+        // Инициализируем новые горячие клавиши
+        window.hotkeysCleanup = initHotkeys({
+            onSearch: () => {
+                focusSearch();
+            },
+            onNewArticle: () => {
+                if (state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.role === 'superadmin')) {
+                    window.router.navigate('/admin/articles/new');
+                }
+            },
+            onEditArticle: () => {
+                if (isOnArticlePage && state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.role === 'superadmin')) {
+                    const slug = path.split('/wiki/')[1];
+                    if (slug) {
+                        window.router.navigate(`/admin/articles/${slug}`);
+                    }
+                }
+            },
+            user: state.currentUser,
+            isOnArticlePage
+        });
+
+        setTimeout(() => {
+            if (window.initHeaderHotkeysInfo) {
+                window.initHeaderHotkeysInfo();
+            }
+        }, 100);
+
+        // Обновляем подсказку горячих клавиш
+        if (window.updateHotkeysTooltip) {
+            const { updateHotkeysTooltip } = await import('./components/HotkeysInfo.js');
+            updateHotkeysTooltip(state.currentUser, isOnArticlePage);
+        }
         
         // Инициализация в зависимости от страницы
         if (path === '/login') {
