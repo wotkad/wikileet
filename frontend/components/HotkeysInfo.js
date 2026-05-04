@@ -11,8 +11,11 @@ export function renderHotkeysInfo() {
                 </svg>
             </button>
             <div id="hotkeys-info-tooltip" class="hidden fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-4 min-w-[280px]">
-                <div class="text-sm font-semibold mb-4 text-gray-300 pb-3 border-b border-gray-700">Горячие клавиши</div>
+                <div class="text-sm font-semibold mb-3 text-gray-300 pb-3 border-b border-gray-700">Горячие клавиши</div>
                 <div class="space-y-2" id="hotkeys-list"></div>
+                <div class="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-700">
+                    Удерживайте <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">G</kbd> + клавиша
+                </div>
             </div>
         </div>
     `;

@@ -10,9 +10,8 @@ export function getModifierKey() {
 
 // Функция для форматирования комбинации клавиш
 export function formatHotkey(key, withModifier = true) {
-    const modifier = getModifierKey();
     if (withModifier) {
-        return `<div class="text-base -mb-px">${modifier}</div> + ${key}`;
+        return `G + ${key.toUpperCase()}`;
     }
     return key;
 }
@@ -31,14 +30,14 @@ export function getAvailableHotkeys(user, isOnArticlePage = false) {
     // Поиск доступен всем
     available.push({
         ...HOTKEYS.SEARCH,
-        displayKey: formatHotkey(HOTKEYS.SEARCH.key.toUpperCase())
+        displayKey: formatHotkey(HOTKEYS.SEARCH.key)
     });
     
     // Новая статья - только для админов и суперадминов
     if (user && (user.role === 'admin' || user.role === 'superadmin')) {
         available.push({
             ...HOTKEYS.NEW_ARTICLE,
-            displayKey: formatHotkey(HOTKEYS.NEW_ARTICLE.key.toUpperCase())
+            displayKey: formatHotkey(HOTKEYS.NEW_ARTICLE.key)
         });
     }
     
@@ -46,12 +45,15 @@ export function getAvailableHotkeys(user, isOnArticlePage = false) {
     if (isOnArticlePage && user && (user.role === 'admin' || user.role === 'superadmin')) {
         available.push({
             ...HOTKEYS.EDIT_ARTICLE,
-            displayKey: formatHotkey(HOTKEYS.EDIT_ARTICLE.key.toUpperCase())
+            displayKey: formatHotkey(HOTKEYS.EDIT_ARTICLE.key)
         });
     }
     
     return available;
 }
+
+// Функция для проверки, удерживается ли клавиша G
+let isGPressed = false;
 
 // Функция для инициализации горячих клавиш
 export function initHotkeys(options) {
@@ -63,45 +65,70 @@ export function initHotkeys(options) {
         isOnArticlePage = false
     } = options;
     
-    const handleKeydown = (e) => {
+    // Сбрасываем состояние при потере фокуса окна
+    const handleBlur = () => {
+        isGPressed = false;
+    };
+    
+    // Обработчик нажатия клавиш
+    const handleKeyDown = (e) => {
         // Проверяем, не введен ли текст в input или textarea
         const target = e.target;
         const isInputFocused = target.tagName === 'INPUT' || 
                               target.tagName === 'TEXTAREA' || 
                               target.isContentEditable;
         
-        // Проверяем нажатие Ctrl (или Cmd на Mac)
-        const isModifierPressed = e.ctrlKey || e.metaKey;
+        // Если клавиша G нажата
+        if (e.code === 'KeyG') {
+            isGPressed = true;
+            return;
+        }
         
-        if (!isModifierPressed) return;
+        // Если G не удерживается - игнорируем комбинации
+        if (!isGPressed) return;
         
-        // Ctrl+K / Cmd+K - поиск
+        // G + K - поиск
         if (e.code === 'KeyK' && onSearch) {
             e.preventDefault();
             onSearch();
+            isGPressed = false;
             return;
         }
         
-        // Ctrl+N / Cmd+N - новая статья (только для админов)
+        // G + N - новая статья (только для админов)
         if (e.code === 'KeyN' && onNewArticle) {
             e.preventDefault();
             onNewArticle();
+            isGPressed = false;
             return;
         }
         
-        // Ctrl+E / Cmd+E - редактировать статью (только на странице статьи)
+        // G + E - редактировать статью (только на странице статьи)
         if (e.code === 'KeyE' && onEditArticle && isOnArticlePage) {
             e.preventDefault();
             onEditArticle();
+            isGPressed = false;
             return;
         }
     };
     
-    // Добавляем обработчик
-    document.addEventListener('keydown', handleKeydown);
+    // Сбрасываем состояние при отпускании клавиш
+    const handleKeyUp = (e) => {
+        if (e.code === 'KeyG') {
+            isGPressed = false;
+        }
+    };
     
-    // Возвращаем функцию для удаления обработчика
+    // Добавляем обработчики
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    
+    // Возвращаем функцию для удаления обработчиков
     return () => {
-        document.removeEventListener('keydown', handleKeydown);
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('blur', handleBlur);
+        isGPressed = false;
     };
 }
